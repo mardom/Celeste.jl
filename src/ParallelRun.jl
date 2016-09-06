@@ -96,6 +96,11 @@ function divide_skyarea(box, nra, ndec, i)
 end
 
 
+@inline nputs(nid, s) = ccall(:puts, Cint, (Cstring,), string("[$nid] ", s))
+@inline ntputs(nid, tid, s) = ccall(:puts, Cint, (Cstring,), string("[$nid]<$tid> ", s))
+@inline phalse(b) = b[] = false
+
+
 function time_puts(elapsedtime, bytes, gctime, allocs)
     s = @sprintf("%10.6f seconds", elapsedtime/1e9)
     if bytes != 0 || allocs != 0
