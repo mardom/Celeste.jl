@@ -9,8 +9,13 @@ export SensitiveFloat,
        add_sources_sf!,
        set_hess!
 
+import Base.zero
+
 
 abstract ParamSet
+
+
+abstract SensitiveFloat
 
 """
 A function value and its derivative with respect to its arguments.
@@ -24,7 +29,7 @@ Attributes:
       in the same format as d.  This is used for the full Hessian
       with respect to all the sources.
 """
-type SensitiveFloat{ParamType <: ParamSet, NumType <: Number}
+type SensitiveFloatH{ParamType <: ParamSet, NumType <: Number} <: SensitiveFloat
     # Actually a single value, but an Array to avoid memory allocation
     v::Vector{NumType}
 
@@ -34,7 +39,17 @@ type SensitiveFloat{ParamType <: ParamSet, NumType <: Number}
     # h is ordered so that p changes fastest.  For example, the indices
     # of a column of h correspond to the indices of d's stacked columns.
     h::Matrix{NumType} # (local_P * local_S) x (local_P * local_S)
-    # ids::ParamType
+end
+
+
+type SensitiveFloatD{ParamType <: ParamSet, NumType <: Number} <: SensitiveFloat
+    v::Vector{NumType}
+    d::Matrix{NumType}
+end
+
+
+type SensitiveFloatV{ParamType <: ParamSet, NumType <: Number} <: SensitiveFloat
+    v::Vector{NumType}
 end
 
 
@@ -44,73 +59,64 @@ end
 Set a SensitiveFloat's hessian term, maintaining symmetry.
 """
 function set_hess!{ParamType <: ParamSet, NumType <: Number}(
-    sf::SensitiveFloat{ParamType, NumType},
-    i::Int, j::Int, v::NumType)
-  i != j ?
-    sf.h[i, j] = sf.h[j, i] = v:
-    sf.h[i, j] = v
-
-    true # Set definite return type
+                    sf::SensitiveFloatH{ParamType, NumType},
+                    i::Int,
+                    j::Int,
+                    v::NumType)
+    # if i == j, this is still probably faster than branching
+    # TODO: make the Hessian have type Hermitian
+    sf.h[i, j] = sf.h[j, i] = v
 end
 
-function zero_sensitive_float{ParamType <: ParamSet}(
-  ::Type{ParamType}, NumType::DataType, local_S::Int)
-    local_P = length(ParamType)
 
+function zero{ParamType <: ParamSet, NumType <: Number}(
+                    ::Type{SensitiveFloatH{ParamType, NumType}},
+                    local_S::Int)
+    local_P = length(ParamType)
     v = zeros(NumType, 1)
     d = zeros(NumType, local_P, local_S)
     h = zeros(NumType, local_P * local_S, local_P * local_S)
-    SensitiveFloat{ParamType, NumType}(v, d, h)
+    SensitiveFloatH{ParamType, NumType}(v, d, h)
 end
 
 
-function zero_sensitive_float{ParamType <: ParamSet}(
-    ::Type{ParamType}, NumType::DataType)
-        # Default to a single source.
-        zero_sensitive_float(ParamType, NumType, 1)
+function zero{ParamType <: ParamSet, NumType <: Number}(
+                    ::Type{SensitiveFloatD{ParamType, NumType}},
+                    local_S::Int)
+    local_P = length(ParamType)
+    v = zeros(NumType, 1)
+    d = zeros(NumType, local_P, local_S)
+    SensitiveFloatD{ParamType, NumType}(v, d)
 end
 
 
-# If no type is specified, default to using Float64.
-function zero_sensitive_float{ParamType <: ParamSet}(
-            param_arg::Type{ParamType}, local_S::Int)
-    zero_sensitive_float(param_arg, Float64, local_S)
-end
-
-
-function zero_sensitive_float{ParamType <: ParamSet}(
-            param_arg::Type{ParamType})
-    zero_sensitive_float(param_arg, Float64, 1)
-end
-
-
-function zero_sensitive_float_array{ParamType <: ParamSet}(
-    ::Type{ParamType}, NumType::DataType, local_S::Int, d::Integer...)
-
-    sf_array = Array(SensitiveFloat{ParamType, NumType}, d)
-    for ind in 1:length(sf_array)
-        sf_array[ind] = zero_sensitive_float(ParamType, NumType, local_S)
-    end
-
-    sf_array
+function zero{ParamType <: ParamSet, NumType <: Number}(
+                    ::Type{SensitiveFloatV{ParamType, NumType}},
+                    local_S::Int)
+    local_P = length(ParamType)
+    v = zeros(NumType, 1)
+    SensitiveFloatV{ParamType, NumType}(v)
 end
 
 
 function clear!{ParamType <: ParamSet, NumType <: Number}(
-            sp::SensitiveFloat{ParamType, NumType})
-    clear!(sp, true)
-end
-
-
-function clear!{ParamType <: ParamSet, NumType <: Number}(
-                sp::SensitiveFloat{ParamType, NumType}, clear_hessian::Bool)
+                sp::SensitiveFloatH{ParamType, NumType})
     fill!(sp.v, zero(NumType))
     fill!(sp.d, zero(NumType))
-    if clear_hessian
-      fill!(sp.h, zero(NumType))
-    end
+    fill!(sp.h, zero(NumType))
+end
 
-    true # Set definite return type
+
+function clear!{ParamType <: ParamSet, NumType <: Number}(
+                sp::SensitiveFloatD{ParamType, NumType})
+    fill!(sp.v, zero(NumType))
+    fill!(sp.d, zero(NumType))
+end
+
+
+function clear!{ParamType <: ParamSet, NumType <: Number}(
+                sp::SensitiveFloatV{ParamType, NumType})
+    fill!(sp.v, zero(NumType))
 end
 
 
@@ -119,9 +125,9 @@ Factor out the hessian part of combine_sfs!.
 """
 function combine_sfs_hessian!{ParamType <: ParamSet,
                  T1 <: Number, T2 <: Number, T3 <: Number}(
-            sf1::SensitiveFloat{ParamType, T1},
-            sf2::SensitiveFloat{ParamType, T1},
-            sf_result::SensitiveFloat{ParamType, T1},
+            sf1::SensitiveFloatH{ParamType, T1},
+            sf2::SensitiveFloatH{ParamType, T1},
+            sf_result::SensitiveFloatH{ParamType, T1},
             g_d::Vector{T2}, g_h::Matrix{T3})
     @assert g_h[1, 2] == g_h[2, 1]
 
@@ -157,9 +163,29 @@ it can overwrite sf1 or sf2 and still be accurate.
 """
 function combine_sfs!{ParamType <: ParamSet,
                       T1 <: Number, T2 <: Number, T3 <: Number}(
-        sf1::SensitiveFloat{ParamType, T1},
-        sf2::SensitiveFloat{ParamType, T1},
-        sf_result::SensitiveFloat{ParamType, T1},
+        sf1::SensitiveFloatH{ParamType, T1},
+        sf2::SensitiveFloatH{ParamType, T1},
+        sf_result::SensitiveFloatH{ParamType, T1},
+        v::T1, g_d::Vector{T2}, g_h::Matrix{T3})
+    # You have to do this in the right order to not overwrite needed terms.
+    combine_sfs_hessian!(sf1, sf2, sf_result, g_d, g_h)
+
+    combine_sfs!(sf1, sf2, sf_results, v g_d, g_h)
+
+    sf_result.d[:] = sf1.d
+    n = length(sf_result.d)
+    LinAlg.BLAS.scal!(n, g_d[1], sf_result.d, 1)
+    LinAlg.BLAS.axpy!(g_d[2], sf2.d, sf_result.d)
+
+    sf_result.v[1] = v
+end
+
+
+function combine_sfs!{ParamType <: ParamSet,
+                      T1 <: Number, T2 <: Number, T3 <: Number}(
+        sf1::SensitiveFloatH{ParamType, T1},
+        sf2::SensitiveFloatH{ParamType, T1},
+        sf_result::SensitiveFloatH{ParamType, T1},
         v::T1, g_d::Vector{T2}, g_h::Matrix{T3};
         calculate_hessian::Bool=true)
     # You have to do this in the right order to not overwrite needed terms.
@@ -173,8 +199,6 @@ function combine_sfs!{ParamType <: ParamSet,
     LinAlg.BLAS.axpy!(g_d[2], sf2.d, sf_result.d)
 
     sf_result.v[1] = v
-
-    true # Set definite return type
 end
 
 

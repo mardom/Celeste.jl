@@ -213,7 +213,7 @@ function subtract_kl_c!{NumType <: Number}(
 
     kl_term = zero_sensitive_float(CanonicalParams, NumType)
     for i in 1:Ia, d in 1:D
-        clear!(kl_term)
+        clear!(kl_term, false)
         pp_kl_cid = gen_diagmvn_mvn_kl(
             prior.c_mean[:, d, i], prior.c_cov[:, :, d, i])
         mean_ids = ids.c1[:, i]
@@ -253,7 +253,7 @@ function subtract_kl_k!{NumType <: Number}(
 
     kl_term = zero_sensitive_float(CanonicalParams, NumType)
     for i in 1:Ia
-        clear!(kl_term)
+        clear!(kl_term, false)
         k_ind = ids.k[:, i]
         pp_kl_ki = gen_categorical_kl(prior.k[:, i])
         kl, grad, hess = pp_kl_ki(vs[k_ind], calculate_derivs)
@@ -278,7 +278,7 @@ function subtract_kl_r!{NumType <: Number}(
 
     kl_term = zero_sensitive_float(CanonicalParams, NumType)
     for i in 1:Ia
-        clear!(kl_term)
+        clear!(kl_term, false)
         pp_kl_r = gen_normal_kl(prior.r_mean[i], prior.r_var[i])
         kl, grad, hess = pp_kl_r(vs[ids.r1[i]], vs[ids.r2[i]], calculate_derivs)
         r_ind = Integer[ ids.r1[i], ids.r2[i] ]
