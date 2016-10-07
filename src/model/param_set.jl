@@ -1,3 +1,5 @@
+abstract ParamSet
+
 
 # ParamSet types
 #

@@ -179,7 +179,7 @@ with other sensitive floats.
 """
 function get_a_term_sensitive_float{NumType <: Number}(
         a::NumType, i::Integer, calculate_derivs::Bool)
-    a_term = zero_sensitive_float(CanonicalParams, NumType)
+    a_term = SensitiveFloat{NumType}(length(CanonicalParams), 1, calculate_derivs, calculate_derivs)
     a_term.v[1] = a
     if calculate_derivs
         a_term.d[ids.a[i, 1], 1] = 1
@@ -193,9 +193,8 @@ A sensitive float representing a single term k[d, i] which can be combined
 with other sensitive floats.
 """
 function get_k_term_sensitive_float{NumType <: Number}(
-        k::NumType, i::Integer, d::Integer, calculate_derivs::Bool)
-
-    k_term = zero_sensitive_float(CanonicalParams, NumType)
+            k::NumType, i::Integer, d::Integer, calculate_derivs::Bool)
+    kl_term = SensitiveFloat(kl_source)
     k_term.v[1] = k
     if calculate_derivs
         k_term.d[ids.k[d, i], 1] = 1
@@ -208,10 +207,10 @@ end
 Subtract the KL divergence from the prior for c
 """
 function subtract_kl_c!{NumType <: Number}(
-    vs::Vector{NumType}, kl_source::SensitiveFloat{CanonicalParams, NumType},
-    calculate_derivs::Bool)
-
-    kl_term = zero_sensitive_float(CanonicalParams, NumType)
+                vs::Vector{NumType},
+                kl_source::SensitiveFloat{CanonicalParams, NumType},
+                calculate_derivs::Bool)
+    kl_term = SensitiveFloat(kl_source)
     for i in 1:Ia, d in 1:D
         clear!(kl_term, false)
         pp_kl_cid = gen_diagmvn_mvn_kl(
@@ -247,11 +246,10 @@ Args:
           of the k parameters.
 """
 function subtract_kl_k!{NumType <: Number}(
-        vs::Vector{NumType},
-        kl_source::SensitiveFloat{CanonicalParams, NumType},
-        calculate_derivs::Bool)
-
-    kl_term = zero_sensitive_float(CanonicalParams, NumType)
+                    vs::Vector{NumType},
+                    kl_source::SensitiveFloat{CanonicalParams, NumType},
+                    calculate_derivs::Bool)
+    kl_term = SensitiveFloat(kl_source)
     for i in 1:Ia
         clear!(kl_term, false)
         k_ind = ids.k[:, i]
@@ -275,8 +273,7 @@ Subtract the KL divergence from the prior for r for object type i.
 function subtract_kl_r!{NumType <: Number}(
         vs::Vector{NumType}, kl_source::SensitiveFloat{CanonicalParams, NumType},
         calculate_derivs::Bool)
-
-    kl_term = zero_sensitive_float(CanonicalParams, NumType)
+    kl_term = SensitiveFloat(kl_source)
     for i in 1:Ia
         clear!(kl_term, false)
         pp_kl_r = gen_normal_kl(prior.r_mean[i], prior.r_var[i])
@@ -321,7 +318,7 @@ function subtract_kl!{NumType <: Number}(
 
     for sa in 1:length(ea.active_sources)
         s = ea.active_sources[sa]
-        kl_source = zero_sensitive_float(CanonicalParams, NumType)
+        kl_source = SensitiveFloat{NumType}(length(CanonicalParams),1, calculate_derivs, calculate_derivs)
         subtract_kl_a!(ea.vp[s], kl_source, calculate_derivs)
         subtract_kl_k!(ea.vp[s], kl_source, calculate_derivs)
         subtract_kl_r!(ea.vp[s], kl_source, calculate_derivs)

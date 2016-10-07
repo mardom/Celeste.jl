@@ -155,22 +155,23 @@ Args:
                 calculate_derivs = false, then hessians will not be
                 calculated irrespective of the value of calculate_hessian.
 """
-function ModelIntermediateVariables(NumType::DataType,
+function ModelIntermediateVariables{NumType <: Number}(
+                                    NumType::DataType,
                                     S::Int,
                                     num_active_sources::Int;
                                     calculate_derivs::Bool=true,
                                     calculate_hessian::Bool=true)
-    @assert NumType <: Number
-
     bvn_derivs = BivariateNormalDerivatives{NumType}(NumType)
 
     # fs0m and fs1m accumulate contributions from all bvn components
     # for a given source.
-    fs0m_vec = Array(SensitiveFloat{StarPosParams, NumType}, S)
-    fs1m_vec = Array(SensitiveFloat{GalaxyPosParams, NumType}, S)
+    fs0m_vec = Array(SensitiveFloat{NumType}, S)
+    fs1m_vec = Array(SensitiveFloat{NumType}, S)
     for s = 1:S
-        fs0m_vec[s] = zero_sensitive_float(StarPosParams, NumType)
-        fs1m_vec[s] = zero_sensitive_float(GalaxyPosParams, NumType)
+        fs0m_vec[s] = SensitiveFloat{NumType}(length(StarPosParams), 1, 
+                                                calculate_derivs, calculate_hess)
+        fs1m_vec[s] = SensitiveFloat{NumType}(length(GalaxyPosParams), 1,
+                                                calculate_derivs, calculate_hess)
     end
 
     combine_grad = zeros(NumType, 2)

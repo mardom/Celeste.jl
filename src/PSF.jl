@@ -57,11 +57,11 @@ type PsfOptimizer
 
         bvn_derivs = BivariateNormalDerivatives{Float64}(Float64)
 
-        log_pdf = SensitiveFloats.zero_sensitive_float(PsfParams, Float64, 1)
-        pdf = SensitiveFloats.zero_sensitive_float(PsfParams, Float64, 1)
-        pixel_value = SensitiveFloats.zero_sensitive_float(PsfParams, Float64, K)
-        squared_error = SensitiveFloats.zero_sensitive_float(PsfParams, Float64, K)
-        sf_free = SensitiveFloats.zero_sensitive_float(PsfParams, Float64, K)
+        log_pdf = SensitiveFloat{Float64}(length(PsfParams), 1, true, true)
+        pdf = SensitiveFloat{Float64}(length(PsfParams), 1, true, true)
+        pixel_value = SensitiveFloat{Float64}(length(PsfParams), K, true, true)
+        squared_error = SensitiveFloat{Float64}(length(PsfParams), K, true, true)
+        sf_free = SensitiveFloat{Float64}(length(PsfParams), K, true, true)
 
         x_mat = Array(Float64, 0, 0)
         raw_psf = Array(Float64, 0, 0)

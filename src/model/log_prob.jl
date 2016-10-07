@@ -1,10 +1,7 @@
 # Functions to compute the log probability of star parameters and galaxy
 # parameters given pixel data
 using Distributions
-import ..SensitiveFloats: SensitiveFloat, zero_sensitive_float, clear!
 
-#include("../bivariate_normals.jl")
-#include("log_prob_util.jl")
 EPS = 1e-6
 
 ###################################

@@ -84,7 +84,7 @@ function maximize_f(f::Function,
         transform.transform_sensitive_float(f_res, ea.vp, ea.active_sources)
     end
 
-    last_sf = zero_sensitive_float(UnconstrainedParams, Sa)
+    last_sf = SensitiveFloat{Float64}(length(UnconstrainedParams), Sa, true, true)
     last_x = [ NaN ]
 
     function f_wrapped_cached(x::Vector{Float64})

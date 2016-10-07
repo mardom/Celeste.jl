@@ -129,28 +129,30 @@ function ElboIntermediateVariables(NumType::DataType,
     fs0m_vec = Array(SensitiveFloat{StarPosParams, NumType}, S)
     fs1m_vec = Array(SensitiveFloat{GalaxyPosParams, NumType}, S)
     for s = 1:S
-        fs0m_vec[s] = zero_sensitive_float(StarPosParams, NumType)
-        fs1m_vec[s] = zero_sensitive_float(GalaxyPosParams, NumType)
+        fs0m_vec[s] = SensitiveFloat{NumType}(length(StarPosParams), 1,
+                                              calculate_derivs, calculate_hessian)
+        fs1m_vec[s] = SensitiveFloat{NumType}(length(GalaxyPosParams), 1,
+                                              calculate_derivs, calculate_hessian)
     end
 
-    E_G_s = zero_sensitive_float(CanonicalParams, NumType, 1)
-    E_G2_s = zero_sensitive_float(CanonicalParams, NumType, 1)
-    var_G_s = zero_sensitive_float(CanonicalParams, NumType, 1)
+    E_G_s = SensitiveFloat{NumType}(CanonicalParams, 1, calculate_derivs, calculate_hessian)
+    E_G2_s = SensitiveFloat(E_G_s)
+    var_G_s = SensitiveFloat(E_G_s)
 
     E_G_s_hsub_vec =
         HessianSubmatrices{NumType}[ HessianSubmatrices(NumType, i) for i=1:Ia ]
     E_G2_s_hsub_vec =
         HessianSubmatrices{NumType}[ HessianSubmatrices(NumType, i) for i=1:Ia ]
 
-    E_G = zero_sensitive_float(CanonicalParams, NumType, num_active_sources)
-    var_G = zero_sensitive_float(CanonicalParams, NumType, num_active_sources)
+    E_G = SensitiveFloat{NumType}(length(CanonicalParams), num_active_sources,
+                                   calculate_derivs, calculate_hessian)
+    var_G = SensitiveFloat(E_G)
 
     combine_grad = zeros(NumType, 2)
     combine_hess = zeros(NumType, 2, 2)
 
-    elbo_log_term =
-        zero_sensitive_float(CanonicalParams, NumType, num_active_sources)
-    elbo = zero_sensitive_float(CanonicalParams, NumType, num_active_sources)
+    elbo_log_term = SensitiveFloat(E_G)
+    elbo = SensitiveFloat(E_G)
 
     ElboIntermediateVariables{NumType}(
         bvn_derivs, fs0m_vec, fs1m_vec,
