@@ -17,10 +17,10 @@ and all other rows are lognormal offsets.
 """
 immutable SourceBrightness{NumType <: Number}
     # [E[l|a=0], E[l]|a=1]]
-    E_l_a::Matrix{SensitiveFloat{BrightnessParams, NumType}}
+    E_l_a::Matrix{SensitiveFloat{NumType}}
 
     # [E[l^2|a=0], E[l^2]|a=1]]
-    E_ll_a::Matrix{SensitiveFloat{BrightnessParams, NumType}}
+    E_ll_a::Matrix{SensitiveFloat{NumType}}
 end
 
 
@@ -34,8 +34,8 @@ function SourceBrightness{NumType <: Number}(
 
     # E_l_a has a row for each of the five colors and columns
     # for star / galaxy.
-    E_l_a = Array(SensitiveFloat{BrightnessParams, NumType}, B, Ia)
-    E_ll_a = Array(SensitiveFloat{BrightnessParams, NumType}, B, Ia)
+    E_l_a = Array(SensitiveFloat{NumType}, B, Ia)
+    E_ll_a = Array(SensitiveFloat{NumType}, B, Ia)
 
     for i = 1:Ia
         ids_band_3 = Int[bids.r1, bids.r2]

@@ -1,4 +1,15 @@
 """
+If Infs/NaNs have crept into the ELBO evaluation (a symptom of poorly conditioned optimization),
+this helps catch them immediately.
+"""
+function assert_all_finite{ParamType}(sf::SensitiveFloat)
+    @assert all(isfinite(sf.v)) "Value is Inf/NaNs"
+    @assert all(isfinite(sf.d)) "Gradient contains Inf/NaNs"
+    @assert all(isfinite(sf.h)) "Hessian contains Inf/NaNs"
+end
+
+
+"""
 Convolve the current locations and galaxy shapes with the PSF.  If
 calculate_derivs is true, also calculate derivatives and hessians for
 active sources.
@@ -70,13 +81,13 @@ type ElboIntermediateVariables{NumType <: Number}
     # as ea.active_sources.
 
     # TODO: you can treat this the same way as E_G_s and not keep a vector around.
-    fs0m_vec::Vector{SensitiveFloat{StarPosParams, NumType}}
-    fs1m_vec::Vector{SensitiveFloat{GalaxyPosParams, NumType}}
+    fs0m_vec::Vector{SensitiveFloat{NumType}}
+    fs1m_vec::Vector{SensitiveFloat{NumType}}
 
     # Brightness values for a single source
-    E_G_s::SensitiveFloat{CanonicalParams, NumType}
-    E_G2_s::SensitiveFloat{CanonicalParams, NumType}
-    var_G_s::SensitiveFloat{CanonicalParams, NumType}
+    E_G_s::SensitiveFloat{NumType}
+    E_G2_s::SensitiveFloat{NumType}
+    var_G_s::SensitiveFloat{NumType}
 
     # Subsets of the Hessian of E_G_s and E_G2_s that allow us to use BLAS
     # functions to accumulate Hessian terms. There is one submatrix for
@@ -85,18 +96,18 @@ type ElboIntermediateVariables{NumType <: Number}
     E_G2_s_hsub_vec::Vector{HessianSubmatrices{NumType}}
 
     # Expected pixel intensity and variance for a pixel from all sources.
-    E_G::SensitiveFloat{CanonicalParams, NumType}
-    var_G::SensitiveFloat{CanonicalParams, NumType}
+    E_G::SensitiveFloat{NumType}
+    var_G::SensitiveFloat{NumType}
 
     # Pre-allocated memory for the gradient and Hessian of combine functions.
     combine_grad::Vector{NumType}
     combine_hess::Matrix{NumType}
 
     # A placeholder for the log term in the ELBO.
-    elbo_log_term::SensitiveFloat{CanonicalParams, NumType}
+    elbo_log_term::SensitiveFloat{NumType}
 
     # The ELBO itself.
-    elbo::SensitiveFloat{CanonicalParams, NumType}
+    elbo::SensitiveFloat{NumType}
 
     # If false, do not calculate hessians or derivatives.
     calculate_derivs::Bool
@@ -135,7 +146,7 @@ function ElboIntermediateVariables(NumType::DataType,
                                               calculate_derivs, calculate_hessian)
     end
 
-    E_G_s = SensitiveFloat{NumType}(CanonicalParams, 1, calculate_derivs, calculate_hessian)
+    E_G_s = SensitiveFloat{NumType}(length(CanonicalParams), 1, calculate_derivs, calculate_hessian)
     E_G2_s = SensitiveFloat(E_G_s)
     var_G_s = SensitiveFloat(E_G_s)
 
@@ -818,10 +829,4 @@ function elbo{NumType <: Number}(
     elbo
 end
 
-# If Infs/NaNs have crept into the ELBO evaluation (a symptom of poorly conditioned optimization),
-# this helps catch them immediately.
-function assert_all_finite{ParamType}(sf::SensitiveFloat{ParamType, Float64})
-    @assert all(isfinite(sf.v)) "Value is Inf/NaNs"
-    @assert all(isfinite(sf.d)) "Gradient contains Inf/NaNs"
-    @assert all(isfinite(sf.h)) "Hessian contains Inf/NaNs"
-end
+

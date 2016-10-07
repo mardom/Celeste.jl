@@ -131,9 +131,8 @@ type ModelIntermediateVariables{NumType <: Number}
     # as ea.active_sources.
 
     # TODO: you can treat this the same way as E_G_s and not keep a vector around.
-    fs0m_vec::Vector{SensitiveFloat{StarPosParams, NumType}}
-    fs1m_vec::Vector{SensitiveFloat{GalaxyPosParams, NumType}}
-
+    fs0m_vec::Vector{SensitiveFloat{NumType}}
+    fs1m_vec::Vector{SensitiveFloat{NumType}}
 
     # Pre-allocated memory for the gradient and Hessian of combine functions.
     combine_grad::Vector{NumType}
@@ -146,6 +145,7 @@ type ModelIntermediateVariables{NumType <: Number}
     calculate_hessian::Bool
 end
 
+
 """
 Args:
     - S: The total number of sources
@@ -155,13 +155,12 @@ Args:
                 calculate_derivs = false, then hessians will not be
                 calculated irrespective of the value of calculate_hessian.
 """
-function ModelIntermediateVariables{NumType <: Number}(
-                                    NumType::DataType,
+function ModelIntermediateVariables(NumType::DataType,
                                     S::Int,
                                     num_active_sources::Int;
                                     calculate_derivs::Bool=true,
                                     calculate_hessian::Bool=true)
-    bvn_derivs = BivariateNormalDerivatives{NumType}(NumType)
+    bvn_derivs = BivariateNormalDerivatives(NumType)
 
     # fs0m and fs1m accumulate contributions from all bvn components
     # for a given source.
@@ -203,8 +202,8 @@ Returns:
 """
 function populate_fsm_vecs!{NumType <: Number}(
                     bvn_derivs::BivariateNormalDerivatives{NumType},
-                    fs0m_vec::Vector{SensitiveFloat{StarPosParams, NumType}},
-                    fs1m_vec::Vector{SensitiveFloat{GalaxyPosParams, NumType}},
+                    fs0m_vec::Vector{SensitiveFloat{NumType}},
+                    fs1m_vec::Vector{SensitiveFloat{NumType}},
                     mv_calculate_derivs::Bool,
                     mv_calculate_hessian::Bool,
                     patches::Matrix{SkyPatch},
@@ -303,7 +302,7 @@ Returns:
 """
 function accum_star_pos!{NumType <: Number}(
                     bvn_derivs::BivariateNormalDerivatives{NumType},
-                    fs0m_vec::Vector{SensitiveFloat{StarPosParams, NumType}},
+                    fs0m_vec::Vector{SensitiveFloat{NumType}},
                     calculate_derivs::Bool,
                     calculate_hessian::Bool,
                     s::Int,
@@ -359,7 +358,7 @@ Returns:
 """
 function accum_galaxy_pos!{NumType <: Number}(
                     bvn_derivs::BivariateNormalDerivatives{NumType},
-                    fs1m_vec::Vector{SensitiveFloat{GalaxyPosParams, NumType}},
+                    fs1m_vec::Vector{SensitiveFloat{NumType}},
                     calculate_derivs::Bool,
                     calculate_hessian::Bool,
                     s::Int,

@@ -39,11 +39,11 @@ type PsfOptimizer
     x_mat::Matrix{Float64}
     bvn_derivs::BivariateNormalDerivatives{Float64}
 
-    log_pdf::SensitiveFloat{PsfParams, Float64}
-    pdf::SensitiveFloat{PsfParams, Float64}
-    pixel_value::SensitiveFloat{PsfParams, Float64}
-    squared_error::SensitiveFloat{PsfParams, Float64}
-    sf_free::SensitiveFloat{PsfParams, Float64}
+    log_pdf::SensitiveFloat{Float64}
+    pdf::SensitiveFloat{Float64}
+    pixel_value::SensitiveFloat{Float64}
+    squared_error::SensitiveFloat{Float64}
+    sf_free::SensitiveFloat{Float64}
 
     psf_params_free_vec_cache::Vector{Float64}
 
@@ -406,9 +406,9 @@ function evaluate_psf_pixel_fit!{NumType <: Number}(
         sig_sf_vec::Vector{GalaxySigmaDerivs{NumType}},
         bvn_vec::Vector{BvnComponent{NumType}},
         bvn_derivs::BivariateNormalDerivatives{NumType},
-        log_pdf::SensitiveFloat{PsfParams, NumType},
-        pdf::SensitiveFloat{PsfParams, NumType},
-        pixel_value::SensitiveFloat{PsfParams, NumType},
+        log_pdf::SensitiveFloat{NumType},
+        pdf::SensitiveFloat{NumType},
+        pixel_value::SensitiveFloat{NumType},
         calculate_derivs::Bool)
     clear!(pixel_value)
 
@@ -518,10 +518,10 @@ function evaluate_psf_fit!{NumType <: Number}(
         psf_params::Vector{Vector{NumType}}, raw_psf::Matrix{Float64},
         x_mat::Matrix{Vector{Float64}},
         bvn_derivs::BivariateNormalDerivatives{NumType},
-        log_pdf::SensitiveFloat{PsfParams, NumType},
-        pdf::SensitiveFloat{PsfParams, NumType},
-        pixel_value::SensitiveFloat{PsfParams, NumType},
-        squared_error::SensitiveFloat{PsfParams, NumType},
+        log_pdf::SensitiveFloat{NumType},
+        pdf::SensitiveFloat{NumType},
+        pixel_value::SensitiveFloat{NumType},
+        squared_error::SensitiveFloat{NumType},
         calculate_derivs::Bool)
     K = length(psf_params)
     sigma_vec, sig_sf_vec, bvn_vec = get_sigma_from_params(psf_params)
@@ -570,7 +570,7 @@ Returns:
 """
 function transform_psf_sensitive_float!{NumType <: Number}(
         psf_params::Vector{Vector{NumType}}, psf_transform::Transform.DataTransform,
-        sf::SensitiveFloat{PsfParams, NumType}, sf_free::SensitiveFloat{PsfParams, NumType},
+        sf::SensitiveFloat{NumType}, sf_free::SensitiveFloat{NumType},
         calculate_derivs::Bool)
     sf_free.v[1] = sf.v[1]
     if calculate_derivs
