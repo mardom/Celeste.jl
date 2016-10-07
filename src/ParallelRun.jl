@@ -11,7 +11,8 @@ import ..SDSSIO: RunCamcolField
 
 
 using Base.Threads
-using Garbo
+#using Garbo
+using Dtree
 
 const TILE_WIDTH = 20
 const MIN_FLUX = 2.0
@@ -201,7 +202,7 @@ function divide_sky_and_infer(
     end
 
     # create Dtree and get the initial allocation
-    dt, is_parent = Dtree(num_work_items, 0.4)
+    dt, is_parent = DtreeScheduler(num_work_items, 0.4)
     ni, (ci, li) = initwork(dt)
     rundt = Ref(runtree(dt))
     @inline function rundtree(again)

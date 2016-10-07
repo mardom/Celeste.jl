@@ -1,147 +1,4 @@
 import WCS
-import Base.convert, Base.serialize, Base.deserialize
-
-# CatalogEntry size is 201 (pos:2, star_fluxes:5, gal_fluxes:5, objid:19)
-# RawPSF size is 84060 (rrows: 2601x4, cmat: 4x5x5)
-# PsfComponent size is 150 (xiBar: 2, tauBar:2x2, tauBarInv:2x2)
-# FlatImage size is 24903682 (pixels: 2048x1489, epsilon_mat: 1489, iota_vec: 2048)
-# ImageTile size is 3296 (pixels: 20x20, epsilon_mat: 20x20, iota_vec: 20)
-# InferResult size is 344 (objid: 19, vs: 32)
-
-immutable FlatImage
-    H::Int
-    W::Int
-    pixels::Matrix{Float32}
-    b::Int
-    wcs_header::String
-    psf::Vector{PsfComponent}
-    run_num::Int
-    camcol_num::Int
-    field_num::Int
-    epsilon_mat::Array{Float32, 2}
-    iota_vec::Array{Float32, 1}
-    raw_psf_comp::RawPSF
-end
-
-function convert(::Type{FlatImage}, img::Image)
-    wcs_header = WCS.to_header(img.wcs)
-    FlatImage(img.H, img.W, img.pixels, img.b,
-              wcs_header, img.psf, img.run_num,
-              img.camcol_num, img.field_num,
-              img.epsilon_mat, img.iota_vec,
-              img.raw_psf_comp)
-end
-
-function convert(::Type{Image}, img::FlatImage)
-    wcs_array = WCS.from_header(img.wcs_header)
-    @assert(length(wcs_array) == 1)
-    wcs = wcs_array[1]
-    Image(img.H, img.W, img.pixels, img.b,
-              wcs, img.psf, img.run_num,
-              img.camcol_num, img.field_num,
-              img.epsilon_mat, img.iota_vec,
-              img.raw_psf_comp)
-end
-
-function ser_array(s::Base.AbstractSerializer, a::Array, flen::Int)
-    serialize(s, size(a))
-    for p in a
-        write(s.io, p)
-    end
-    for i in length(a)+1:flen
-        write(s.io, zero(eltype(a)))
-    end
-end
-
-function deser_array(s::Base.AbstractSerializer, T::DataType, flen::Int)
-    dims = deserialize(s)
-    a = unsafe_wrap(Array, convert(Ptr{T}, pointer(s.io.data, position(s.io)+1)), dims)
-    seek(s.io, position(s.io)+flen*sizeof(T))
-    return a
-end
-
-function serialize(s::Base.AbstractSerializer, psf::PsfComponent)
-    Base.serialize_type(s, typeof(psf))
-    write(s.io, psf.alphaBar)
-    ser_array(s, psf.xiBar, 2)
-    ser_array(s, psf.tauBar, 4)
-    ser_array(s, psf.tauBarInv, 4)
-    write(s.io, psf.tauBarLd)
-end
-
-function deserialize(s::Base.AbstractSerializer, t::Type{PsfComponent})
-    alphaBar = read(s.io, Float64)::Float64
-    xiBar = deser_array(s, Float64, 2)
-    tauBar = deser_array(s, Float64, 4)
-    tauBarInv = deser_array(s, Float64, 4)
-    tauBarLd = read(s.io, Float64)::Float64
-    PsfComponent(alphaBar, xiBar, tauBar, tauBarInv, tauBarLd)
-end
-
-function serialize(s::Base.AbstractSerializer, rp::RawPSF)
-    Base.serialize_type(s, typeof(rp))
-    ser_array(s, rp.rrows, 10500)
-    write(s.io, rp.rnrow)
-    write(s.io, rp.rncol)
-    ser_array(s, rp.cmat, 100)
-end
-
-function deserialize(s::Base.AbstractSerializer, t::Type{RawPSF})
-    rrows = deser_array(s, Float64, 10500)
-    rnrow = read(s.io, Int)::Int
-    rncol = read(s.io, Int)::Int
-    cmat = deser_array(s, Float64, 100)
-    RawPSF(rrows, rnrow, rncol, cmat)
-end
-
-function serialize(s::Base.AbstractSerializer, img::FlatImage)
-    Base.serialize_type(s, typeof(img))
-    write(s.io, img.H)
-    write(s.io, img.W)
-    ser_array(s, img.pixels, 3100000)
-    write(s.io, img.b)
-    whlen = length(img.wcs_header.data)
-    write(s.io, whlen)
-    for i in 1:whlen
-        write(s.io, img.wcs_header.data[i])
-    end
-    for i in whlen+1:10000
-        write(s.io, zero(UInt8))
-    end
-    write(s.io, length(img.psf))
-    for p in img.psf
-        serialize(s, p)
-    end
-    write(s.io, img.run_num)
-    write(s.io, img.camcol_num)
-    write(s.io, img.field_num)
-    ser_array(s, img.epsilon_mat, 3100000)
-    ser_array(s, img.iota_vec, 2100)
-    serialize(s, img.raw_psf_comp)
-end
-
-function deserialize(s::Base.AbstractSerializer, t::Type{FlatImage})
-    H = read(s.io, Int)::Int
-    W = read(s.io, Int)::Int
-    pixels = deser_array(s, Float32, 3100000)
-    b = read(s.io, Int)::Int
-    whlen = read(s.io, Int)::Int
-    wcs_header = unsafe_wrap(String, pointer(s.io.data, position(s.io)+1), whlen)
-    seek(s.io, position(s.io)+10000)
-    psf_len = read(s.io, Int)::Int
-    psf = Vector{PsfComponent}(psf_len)
-    for i in 1:psf_len
-        psf[i] = deserialize(s)
-    end
-    run_num = read(s.io, Int)::Int
-    camcol_num = read(s.io, Int)::Int
-    field_num = read(s.io, Int)::Int
-    epsilon_mat = deser_array(s, Float32, 3100000)
-    iota_vec = deser_array(s, Float32, 2100)
-    raw_psf_comp = deserialize(s)
-    FlatImage(H, W, pixels, b, wcs_header, psf, run_num, camcol_num,
-              field_num, epsilon_mat, iota_vec, raw_psf_comp)
-end
 
 
 function fetch_catalog(rcf, stagedir)
@@ -161,165 +18,34 @@ end
 end
 
 
-function load_images(box, rcfs, stagedir)
+function load_catalog(box, rcfs, stagedir)
     num_fields = length(rcfs)
     if nodeid == 1
         nputs(nodeid, "$num_fields RCFs")
     end
 
-    # each cell of `images` contains B=5 tiled images
-    images = Garray(NTuple{5,FlatImage}, 124780544, num_fields)
-
-    # stores first index of each field's sources in the catalog array
-    catalog_offset = Garray(Int64, 10, num_fields)
-
-    # stores first index of each field's tasks in the tasks array
-    task_offset = Garray(Int64, 10, num_fields)
-
-    # get local distribution of the global array; this should be identical
-    # for all the arrays (since they're all the same size)
-    lo, hi = distribution(images, nodeid)
-    nlocal = hi[1]-lo[1]+1
-
-    # get access to the local parts of the global arrays
-    limages = access(images, lo, hi)
-    lcatalog_offset = access(catalog_offset, lo, hi)
-    ltask_offset = access(task_offset, lo, hi)
-
-    for i in 1:nlocal
-        n = lo[1] + i - 1
-        rcf = rcfs[n]
-
-        nputs(nodeid, "loading images for RCF $n ($(rcf.run), $(rcf.camcol), $(rcf.field))")
-        raw_images = SDSSIO.load_field_images(rcf, stagedir)
-        @assert(length(raw_images) == 5)
-        fimgs = [FlatImage(img) for img in raw_images]
-        limages[i] = tuple(fimgs...)
-   
-        # second, load the `catalog_offset` and `task_count` arrays with
-        # a number of sources for each field.
-        # (We'll accumulate the entries later.)
-        local_catalog = fetch_catalog(rcf, stagedir)
-
-        # we'll use sources outside of the box to render the background,
-        # but we won't optimize them
-        local_tasks = filter(s->in_box(s, box), local_catalog)
-
-        nputs(nodeid, "$(length(local_catalog)) sources ($(length(local_tasks)) tasks) in this RCF")
-
-        lcatalog_offset[i] = length(local_catalog)
-        ltask_offset[i] = length(local_tasks)
-    end
-    flush(images)
-    flush(catalog_offset)
-    flush(task_offset)
-    gc()
-    sync()
-
-    lcatalog_offset = access(catalog_offset, lo, hi)
-    ltask_offset = access(task_offset, lo, hi)
-
-    # folds right, converting each field's count to offsets in # `catalog`
-    # and `tasks`. this is a prefix sum, which can be done in parallel
-    # (TODO: add this to Garbo) but is being done sequentially here
-    for nid = 1:nnodes
-        # one node at a time
-        if nid == nodeid && nlocal > 0
-            catalog_size = 0
-            num_tasks = 0
-            if nid > 1
-                coa, coa_handle = get(catalog_offset, lo-1, lo-1)
-                #nputs(nodeid, "got $(coa[1]) from $(lo[1]-1)")
-                catalog_size = catalog_size + coa[1]
-                toa, toa_handle = get(task_offset, lo-1, lo-1)
-                num_tasks = num_tasks + toa[1]
-            end
-
-            # do the local summing
-            for i in 1:nlocal
-                catalog_size = catalog_size + lcatalog_offset[i]
-                lcatalog_offset[i] = catalog_size
-                num_tasks = num_tasks + ltask_offset[i]
-                ltask_offset[i] = num_tasks
-            end
-            flush(catalog_offset)
-            flush(task_offset)
-        end
-        # sync to ensure orderly progression
-        sync()
-    end
-
-    images, catalog_offset, task_offset
-end
-
-
-function load_catalog(box, rcfs, catalog_offset, task_offset, stagedir)
-    num_fields = length(rcfs)
-    coa, coa_handle = get(catalog_offset, [num_fields], [num_fields])
-    catalog_size = coa[1]
-    toa, toa_handle = get(task_offset, [num_fields], [num_fields])
-    num_tasks = toa[1]
-
-    if nodeid == 1
-        nputs(nodeid, "catalog size is $catalog_size, $num_tasks tasks")
-    end
-
-    catalog = Garray(Tuple{CatalogEntry, RunCamcolField}, 300, catalog_size)
-
-    # entries in `tasks` are indexes into `catalog`
-    tasks = Garray(Int64, 10, num_tasks)
-
-    # we'll iterate over the local parts of the catalog_offset and
-    # task_offset arrays to build the catalog and task arrays. our starting
-    # indices into the catalog and task arrays are computed from the
-    # previous entries in the respective offset arrays.
-    colo, cohi = distribution(catalog_offset, nodeid)
+    catalog = Vector{Tuple{CatalogEntry,RunCamcolField}}()
     cat_idx = 1
-    task_idx = 1
-    if colo[1] > 1
-        coa, coa_handle = get(catalog_offset, [colo[1]-1], [colo[1]-1])
-        cat_idx = cat_idx + coa[1]
-        toa, toa_handle = get(task_offset, [colo[1]-1], [colo[1]-1])
-        task_idx = task_idx + toa[1]
-    end
-    for n in colo[1]:cohi[1]
-        rcf = rcfs[n]
-        rcf_catalog = fetch_catalog(rcf, stagedir)
-        for ci = 1:length(rcf_catalog)
-            entry = rcf_catalog[ci]
-            put!(catalog, [cat_idx], [cat_idx], [(entry, rcf)])
+    tasks = Vector{Int64}()
+
+    for i = 1:num_fields
+        rcf_cat = fetch_catalog(rcfs[i], stagedir)
+        for entry in rcf_cat
+            push!(catalog, (entry, rcf))
             if in_box(entry, box)
-                put!(tasks, [task_idx], [task_idx], [cat_idx])
-                task_idx = task_idx + 1
+                push!(tasks, cat_idx)
             end
             cat_idx = cat_idx + 1
         end
     end
+
+    if nodeid == 1
+        nputs(nodeid, "catalog size is $(length(catalog)), $(length(tasks)) tasks")
+    end
+
     sync()
 
     catalog, tasks
-end
-
-
-function invert_rcf_array(rcfs)
-    max_run = 1
-    max_camcol = 1
-    max_field = 1
-    for rcf in rcfs
-        max_run = max(max_run, rcf.run)
-        max_camcol = max(max_camcol, rcf.camcol)
-        max_field = max(max_field, rcf.field)
-    end
-
-    rcf_to_index = zeros(Int64, max_run, max_camcol, max_field)
-
-    # this should be really fast
-    for n in 1:length(rcfs)
-        rcf = rcfs[n]
-        rcf_to_index[rcf.run, rcf.camcol, rcf.field] = n
-    end
-
-    rcf_to_index
 end
 
 
@@ -329,13 +55,7 @@ function optimize_source(s::Int64, images::Garray, catalog::Garray,
                          g_lock::SpinLock, stagedir::String, times::InferTiming)
     tid = Base.Threads.threadid()
 
-    tic()
-    lock(g_lock)
-    ep, ep_handle = get(catalog, [s], [s])
-    unlock(g_lock)
-    times.ga_get = times.ga_get + toq()
-    entry, primary_rcf = ep[1]
-
+    entry = catalog[s]
     t_box = BoundingBox(entry.pos[1] - 1e-8, entry.pos[1] + 1e-8,
                         entry.pos[2] - 1e-8, entry.pos[2] + 1e-8)
     surrounding_rcfs = get_overlapping_fields(t_box, stagedir)
@@ -551,6 +271,9 @@ function affinitize()
 end
 
 
+function load_tasks(box::BoundingBox, rcfs::Vector{RunCamcolField}, stagedir::String)
+end
+
 """
 Fit the Celeste model to sources in a given ra, dec range,
 based on data from specified fields
@@ -562,6 +285,8 @@ function divide_sources_and_infer(
                 timing=InferTiming(),
                 outdir=".")
     affinitize()
+
+    tasks = load_tasks(box, rcfs, stagedir)
 
     # read the run-camcol-field triplets for this box
     rcfs = get_overlapping_fields(box, stagedir)
