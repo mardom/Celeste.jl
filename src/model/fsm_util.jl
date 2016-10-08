@@ -225,7 +225,7 @@ function populate_fsm_vecs!{NumType <: Number}(
 
         calculate_hessian =
             mv_calculate_hessian && mv_calculate_derivs && active_source
-        clear!(fs0m_vec[s], calculate_hessian)
+        clear!(fs0m_vec[s])
         for k = 1:psf_K # PSF component
             if (num_allowed_sd == Inf ||
                 check_point_close_to_bvn(star_mcs[k, s], x, num_allowed_sd))
@@ -237,7 +237,7 @@ function populate_fsm_vecs!{NumType <: Number}(
             end
         end
 
-        clear!(fs1m_vec[s], calculate_hessian)
+        clear!(fs1m_vec[s])
         for i = 1:2 # Galaxy types
             for j in 1:8 # Galaxy component
                 # If i == 2 then there are only six galaxy components.

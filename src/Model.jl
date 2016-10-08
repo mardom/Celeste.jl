@@ -58,7 +58,7 @@ typealias VariationalParams{NumType <: Number} Vector{Vector{NumType}}
 typealias FreeVariationalParams{NumType <: Number} Vector{Vector{NumType}}
 
 
-import ..SensitiveFloats: SensitiveFloat
+import ..SensitiveFloats: SensitiveFloat, clear!
 include("bivariate_normals.jl")
 include("model/fsm_util.jl")
 include("model/log_prob.jl")

@@ -9,7 +9,7 @@ import ..Model: BivariateNormalDerivatives, BvnComponent, GalaxyCacheComponent,
                 get_bvn_cov, eval_bvn_pdf!, get_bvn_derivs!,
                 transform_bvn_derivs!
 using ..SensitiveFloats
-import ..SensitiveFloats.clear!
+import ..SensitiveFloats: clear!, SensitiveFloat
 import ..Log
 using ..Transform
 import DataFrames

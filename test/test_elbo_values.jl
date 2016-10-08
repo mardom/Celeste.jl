@@ -31,7 +31,7 @@ end
 #################################
 
 function test_set_hess()
-    sf = zero_sensitive_float(CanonicalParams)
+    sf = SensitiveFloat{Float64}(length(CanonicalParams), 1, true, true)
     set_hess!(sf, 2, 3, 5.0)
     @test_approx_eq sf.h[2, 3] 5.0
     @test_approx_eq sf.h[3, 2] 5.0
@@ -87,13 +87,13 @@ function test_derivative_flags()
 
     elbo_noderiv = DeterministicVI.elbo(ea; calculate_derivs=false)
     @test_approx_eq elbo.v[1] elbo_noderiv.v[1]
-    @test_approx_eq elbo_noderiv.d zeros(size(elbo_noderiv.d))
-    @test_approx_eq elbo_noderiv.h zeros(size(elbo_noderiv.h))
+    @test length(elbo_noderiv.d) == 0
+    @test length(elbo_noderiv.h) == 0
 
     elbo_nohess = DeterministicVI.elbo(ea; calculate_hessian=false)
     @test_approx_eq elbo.v[1] elbo_nohess.v
     @test_approx_eq elbo.d elbo_nohess.d
-    @test_approx_eq elbo_noderiv.h zeros(size(elbo_noderiv.h))
+    @test length(elbo_noderiv.h) == 0
 end
 
 

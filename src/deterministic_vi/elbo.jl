@@ -2,7 +2,7 @@
 If Infs/NaNs have crept into the ELBO evaluation (a symptom of poorly conditioned optimization),
 this helps catch them immediately.
 """
-function assert_all_finite{ParamType}(sf::SensitiveFloat)
+function assert_all_finite(sf::SensitiveFloat)
     @assert all(isfinite(sf.v)) "Value is Inf/NaNs"
     @assert all(isfinite(sf.d)) "Gradient contains Inf/NaNs"
     @assert all(isfinite(sf.h)) "Hessian contains Inf/NaNs"
@@ -137,8 +137,8 @@ function ElboIntermediateVariables(NumType::DataType,
 
     # fs0m and fs1m accumulate contributions from all bvn components
     # for a given source.
-    fs0m_vec = Array(SensitiveFloat{StarPosParams, NumType}, S)
-    fs1m_vec = Array(SensitiveFloat{GalaxyPosParams, NumType}, S)
+    fs0m_vec = Array(SensitiveFloat{NumType}, S)
+    fs1m_vec = Array(SensitiveFloat{NumType}, S)
     for s = 1:S
         fs0m_vec[s] = SensitiveFloat{NumType}(length(StarPosParams), 1,
                                               calculate_derivs, calculate_hessian)
@@ -297,8 +297,8 @@ function accumulate_source_brightness!{NumType <: Number}(
     E_G2_s = elbo_vars.E_G2_s
 
     clear_hessian = elbo_vars.calculate_hessian && elbo_vars.calculate_derivs
-    clear!(E_G_s, clear_hessian)
-    clear!(E_G2_s, clear_hessian)
+    clear!(E_G_s)
+    clear!(E_G2_s)
 
     sb = sbs[s]
 
@@ -476,9 +476,8 @@ function calculate_var_G_s!{NumType <: Number}(
     E_G_s = elbo_vars.E_G_s
     E_G2_s = elbo_vars.E_G2_s
 
-    clear!(var_G_s,
-        elbo_vars.calculate_hessian &&
-            elbo_vars.calculate_derivs && active_source)
+    # TODO: these should only store derivs/hessians for the active sources
+    clear!(var_G_s)
 
     elbo_vars.var_G_s.v[1] = E_G2_s.v[1] - (E_G_s.v[1] ^ 2)
 
@@ -520,10 +519,8 @@ function combine_pixel_sources!{NumType <: Number}(
                     tile_sources::Vector{Int},
                     tile::ImageTile,
                     sbs::Vector{SourceBrightness{NumType}})
-    clear!(elbo_vars.E_G,
-        elbo_vars.calculate_hessian && elbo_vars.calculate_derivs)
-    clear!(elbo_vars.var_G,
-        elbo_vars.calculate_hessian && elbo_vars.calculate_derivs)
+    clear!(elbo_vars.E_G)
+    clear!(elbo_vars.var_G)
 
     for s in tile_sources
         active_source = s in ea.active_sources
@@ -533,8 +530,8 @@ function combine_pixel_sources!{NumType <: Number}(
         accumulate_source_brightness!(elbo_vars, ea, sbs, s, tile.b)
         if active_source
             sa = findfirst(ea.active_sources, s)
-            add_sources_sf!(elbo_vars.E_G, elbo_vars.E_G_s, sa, calculate_hessian)
-            add_sources_sf!(elbo_vars.var_G, elbo_vars.var_G_s, sa, calculate_hessian)
+            add_sources_sf!(elbo_vars.E_G, elbo_vars.E_G_s, sa)
+            add_sources_sf!(elbo_vars.var_G, elbo_vars.var_G_s, sa)
         else
             # If the sources is inactives, simply accumulate the values.
             elbo_vars.E_G.v[1] += elbo_vars.E_G_s.v[1]
@@ -630,8 +627,7 @@ function add_elbo_log_term!{NumType <: Number}(
         # Calculate the log term.
         combine_sfs!(
             elbo_vars.var_G, elbo_vars.E_G, elbo_vars.elbo_log_term,
-            log_term_value, elbo_vars.combine_grad, elbo_vars.combine_hess,
-            calculate_hessian=elbo_vars.calculate_hessian)
+            log_term_value, elbo_vars.combine_grad, elbo_vars.combine_hess)
 
         # Add to the ELBO.
         for ind in 1:length(elbo.d)
@@ -695,10 +691,7 @@ function process_active_pixels!{NumType <: Number}(
         # Add the terms to the elbo given the brightness.
         iota = tile.iota_vec[pixel.h]
         add_elbo_log_term!(elbo_vars, this_pixel, iota)
-        add_scaled_sfs!(elbo_vars.elbo,
-                        elbo_vars.E_G, -iota,
-                        elbo_vars.calculate_hessian &&
-                        elbo_vars.calculate_derivs)
+        add_scaled_sfs!(elbo_vars.elbo, elbo_vars.E_G, -iota)
 
         # Subtract the log factorial term. This is not a function of the
         # parameters so the derivatives don't need to be updated. Note that
@@ -769,8 +762,13 @@ function tile_predicted_image{NumType <: Number}(
                     ea::ElboArgs{NumType},
                     tile_sources::Vector{Int};
                     include_epsilon::Bool=false)
-    star_mcs, gal_mcs = load_bvn_mixtures(ea, tile.b, calculate_derivs=false)
-    sbs = load_source_brightnesses(ea, calculate_derivs=false)
+    star_mcs, gal_mcs = load_bvn_mixtures(ea, 
+                                        tile.b,
+                                        calculate_derivs=false,
+                                        calculate_hessian=false)
+    sbs = load_source_brightnesses(ea,
+                        calculate_derivs=false,
+                        calculate_hessian=false)
 
     elbo_vars =
         ElboIntermediateVariables(NumType, ea.S, length(ea.active_sources))
@@ -789,8 +787,10 @@ pixels to NaN.
 """
 function get_active_pixels{NumType <: Number}(
                     ea::ElboArgs{NumType})
-    return Model.get_active_pixels(ea.N, ea.images,
-                                   ea.tile_source_map, ea.active_sources)
+    return Model.get_active_pixels(ea.N,
+                                   ea.images,
+                                   ea.tile_source_map,
+                                   ea.active_sources)
 end
 
 
@@ -803,6 +803,10 @@ function elbo_likelihood{NumType <: Number}(
                     ea::ElboArgs{NumType};
                     calculate_derivs=true,
                     calculate_hessian=true)
+    if !calculate_derivs
+        calculate_hessian = false
+    end
+
     active_pixels = get_active_pixels(ea)
     elbo_vars = ElboIntermediateVariables(NumType, ea.S,
                                 length(ea.active_sources),
@@ -822,10 +826,14 @@ function elbo{NumType <: Number}(
                     ea::ElboArgs{NumType};
                     calculate_derivs=true,
                     calculate_hessian=true)
+    if !calculate_derivs
+        calculate_hessian = false
+    end
+
     elbo = elbo_likelihood(ea;
         calculate_derivs=calculate_derivs, calculate_hessian=calculate_hessian)
     # TODO: subtract the kl with the hessian.
-    subtract_kl!(ea, elbo, calculate_derivs=calculate_derivs)
+    subtract_kl!(ea, elbo)
     elbo
 end
 

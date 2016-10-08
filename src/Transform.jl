@@ -622,7 +622,7 @@ function DataTransform(bounds::Vector{ParamBounds};
 
         transform_derivatives = get_transform_derivatives(vp, active_sources, bounds)
         sf_free = SensitiveFloat{NumType}(length(UnconstrainedParams), active_S,
-                                          sf.has_derivs, sf.has_hess)
+                                          sf.has_deriv, sf.has_hess)
         sf_d_vec = sf.d[:]
         sf_free.v[1] = sf.v[1]
         sf_free.d =

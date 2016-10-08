@@ -939,7 +939,7 @@ function test_combine_sfs()
   s_ind[1] = 1:p
   s_ind[2] = (1:p) + p
 
-  ret1 = zero_sensitive_float(CanonicalParams, Float64, S);
+  ret1 = SensitiveFloat{Float64}(length(CanonicalParams), S, true, true);
   ret1.v[1] = base_fun1(x)
   fill!(ret1.d, 0.0);
   fill!(ret1.h, 0.0);
@@ -948,7 +948,7 @@ function test_combine_sfs()
     ret1.h[s_ind[s], s_ind[s]] = sigma1[s_ind[s], s_ind[s]];
   end
 
-  ret2 = zero_sensitive_float(CanonicalParams, Float64, S);
+  ret2 = SensitiveFloat{Float64}(length(CanonicalParams), S, true, true);
   ret2.v[1] = base_fun2(x)
   fill!(ret2.d, 0.0);
   fill!(ret2.h, 0.0);
@@ -991,11 +991,11 @@ function test_add_sources_sf()
   P = length(CanonicalParams)
   S = 2
 
-  sf_all = zero_sensitive_float(CanonicalParams, Float64, S);
-  sf_s = zero_sensitive_float(CanonicalParams, Float64, 1);
+  sf_all = SensitiveFloat{Float64}(length(CanonicalParams), S, true, true);
+  sf_s = SensitiveFloat{Float64}(length(CanonicalParams), 1, true, true);
 
   function scaled_exp!{NumType <: Number}(
-      sf::SensitiveFloat{CanonicalParams, NumType},
+      sf::SensitiveFloat{NumType},
       x::Vector{NumType}, a::Vector{Float64})
 
     sf.v[1] = one(NumType)
@@ -1010,14 +1010,14 @@ function test_add_sources_sf()
 
   a1 = rand(P);
   function f1{NumType <: Number}(x::Vector{NumType})
-    sf_local = zero_sensitive_float(CanonicalParams, NumType, 1);
+    sf_local = SensitiveFloat{NumType}(length(CanonicalParams), 1);
     scaled_exp!(sf_local, x, a1)
     sf_local.v[1]
   end
 
   a2 = rand(P);
   function f2{NumType <: Number}(x::Vector{NumType})
-    sf_local = zero_sensitive_float(CanonicalParams, NumType, 1);
+    sf_local = SensitiveFloat{NumType}(length(CanonicalParams), 1);
     scaled_exp!(sf_local, x, a2)
     sf_local.v[1]
   end
