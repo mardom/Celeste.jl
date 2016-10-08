@@ -166,7 +166,7 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
                 widx = widx + 1
                 unlock(wilock)
                 times.sched_ovh = times.sched_ovh + toq()
-                ntputs(nodeid, tid, "running task $taskidx")
+                #ntputs(nodeid, tid, "running task $taskidx")
 
                 result = optimize_source(taskidx, tasks, rcfs,
                                          cache, cache_lock,
