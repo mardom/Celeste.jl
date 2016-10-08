@@ -653,9 +653,9 @@ function test_brightness_hessian()
         squares_string = squares ? "E_G" : "E_G2"
         println("Testing brightness $(squares_string) for band $b, type $i")
         function wrap_source_brightness{NumType <: Number}(
-                vp::Vector{NumType}, calculate_derivs::Bool)
+                vp::Vector{NumType})
 
-            sb = DeterministicVI.SourceBrightness(vp, calculate_derivs=calculate_derivs)
+            sb = DeterministicVI.SourceBrightness(vp)
             if squares
                 return deepcopy(sb.E_ll_a[b, i])
             else
@@ -669,11 +669,11 @@ function test_brightness_hessian()
             for b_i in 1:length(brightness_standard_alignment[i])
                 vp[brightness_standard_alignment[i][b_i]] = bright_vp[b_i]
             end
-            wrap_source_brightness(vp, false).v[1]
+            wrap_source_brightness(vp).v[1]
         end
 
         bright_vp = ea.vp[1][brightness_standard_alignment[i]]
-        bright = wrap_source_brightness(ea.vp[1], true)
+        bright = wrap_source_brightness(ea.vp[1])
 
         @test_approx_eq bright.v[1] wrap_source_brightness_value(bright_vp)
 
