@@ -56,11 +56,13 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
 
     rcf_idx, cat_idx = tasks[taskidx]
     rcf = rcfs[rcf_idx]
+    #ntputs(nodeid, tid, "loading catalog for task $taskidx")
     tic()
     catalog = fetch_catalog(rcf, stagedir)
     times.load_cat = times.load_cat + toq()
     entry = catalog[cat_idx]
 
+    #ntputs(nodeid, tid, "getting overlapping fields for task $taskidx")
     t_box = BoundingBox(entry.pos[1] - 1e-8, entry.pos[1] + 1e-8,
                         entry.pos[2] - 1e-8, entry.pos[2] + 1e-8)
     surrounding_rcfs = get_overlapping_fields(t_box, stagedir)
@@ -162,16 +164,22 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
                     times.sched_ovh = times.sched_ovh + toq()
                     continue
                 end
-                taskidx = startwi+widx-1
+                taskidx = startwi + widx - 1
                 widx = widx + 1
                 unlock(wilock)
                 times.sched_ovh = times.sched_ovh + toq()
                 #ntputs(nodeid, tid, "running task $taskidx")
 
-                result = optimize_source(taskidx, tasks, rcfs,
-                                         cache, cache_lock,
-                                         stagedir, times)
+                result = try
+                    optimize_source(taskidx, tasks, rcfs,
+                                    cache, cache_lock,
+                                    stagedir, times)
+                catch exc
+                    ntputs(nodeid, tid, "exception running task $taskidx ($exc)")
+                    continue
+                end
 
+                #ntputs(nodeid, tid, "completed task $taskidx ($(result.objid))")
                 lock(results_lock)
                 push!(results, result)
                 unlock(results_lock)
