@@ -78,8 +78,12 @@ end
 
 function clear!{NumType <: Number}(sf::SensitiveFloat{NumType})
     fill!(sf.v, zero(NumType))
-    fill!(sf.d, zero(NumType))
-    fill!(sf.h, zero(NumType))
+    if sf.has_deriv
+        fill!(sf.d, zero(NumType))
+    end
+    if sf.has_hess
+        fill!(sf.h, zero(NumType))
+    end
 end
 
 
