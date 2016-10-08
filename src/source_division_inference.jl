@@ -20,7 +20,7 @@ end
 end
 
 
-function count_sources(box::BoundingBox, rcfs::Vector{RunCamcolField}, stagedir::String)
+function count_sources(rcfs::Vector{RunCamcolField}, box::BoundingBox, stagedir::String)
     if nodeid == 1
         nputs(nodeid, "$(length(rcfs)) RCFs")
     end
@@ -48,7 +48,7 @@ end
 
 function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
                          rcfs::Vector{RunCamcolField},
-                         cache:Dict, cache_lock::SpinLock,
+                         cache::Dict, cache_lock::SpinLock,
                          stagedir::String, times::InferTiming)
     tid = threadid()
 
@@ -56,7 +56,9 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
 
     rcf_idx, cat_idx = tasks[taskidx]
     rcf = rcfs[rcf_idx]
+    tic()
     catalog = fetch_catalog(rcf, stagedir)
+    times.load_cat = times.load_cat + toq()
     entry = catalog[cat_idx]
 
     t_box = BoundingBox(entry.pos[1] - 1e-8, entry.pos[1] + 1e-8,
@@ -77,7 +79,9 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
             if srcf.run != rcf.run ||
                     srcf.camcol != rcf.camcol ||
                     srcf.field != rcf.field
+                tic()
                 append!(neighbors, fetch_catalog(srcf, stagedir))
+                times.load_cat = times.load_cat + toq()
             end
             tiled_images, neighbors
         end
@@ -118,8 +122,7 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
     ttimes = Array(InferTiming, nthreads())
 
     # create Dtree and get the initial allocation
-    dt, isparent = Dtree(num_work_items, 0.4,
-                         ceil(Int64, nthreads() / 4))
+    dt, isparent = DtreeScheduler(num_work_items, 0.4, ceil(Int64, nthreads() / 4))
     numwi, (startwi, endwi) = initwork(dt)
     rundt = runtree(dt)
 
