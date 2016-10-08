@@ -160,7 +160,8 @@ function ModelIntermediateVariables(NumType::DataType,
                                     num_active_sources::Int;
                                     calculate_derivs::Bool=true,
                                     calculate_hessian::Bool=true)
-    bvn_derivs = BivariateNormalDerivatives(NumType)
+    @assert NumType <: Number
+    bvn_derivs = BivariateNormalDerivatives{NumType}(NumType)
 
     # fs0m and fs1m accumulate contributions from all bvn components
     # for a given source.
@@ -168,9 +169,9 @@ function ModelIntermediateVariables(NumType::DataType,
     fs1m_vec = Array(SensitiveFloat{NumType}, S)
     for s = 1:S
         fs0m_vec[s] = SensitiveFloat{NumType}(length(StarPosParams), 1, 
-                                                calculate_derivs, calculate_hess)
+                                              calculate_derivs, calculate_hessian)
         fs1m_vec[s] = SensitiveFloat{NumType}(length(GalaxyPosParams), 1,
-                                                calculate_derivs, calculate_hess)
+                                              calculate_derivs, calculate_hessian)
     end
 
     combine_grad = zeros(NumType, 2)

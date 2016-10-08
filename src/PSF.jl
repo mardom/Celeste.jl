@@ -480,7 +480,7 @@ function evaluate_psf_pixel_fit!{NumType <: Number}(
 
         pdf.v[1] *= psf_params[k][psf_ids.weight]
 
-        SensitiveFloats.add_sources_sf!(pixel_value, pdf, k, calculate_derivs)
+        SensitiveFloats.add_sources_sf!(pixel_value, pdf, k)
     end
 
     true # Set return type

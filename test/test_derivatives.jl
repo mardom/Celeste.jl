@@ -121,12 +121,14 @@ function test_combine_pixel_sources()
         tile_source_map = ea.tile_source_map[b][1,1]
 
         function e_g_wrapper_fun{NumType <: Number}(
-                ea::ElboArgs{NumType}; calculate_derivs=true)
+                ea::ElboArgs{NumType}; calculate_derivs=true, calculate_hessian=true)
 
             star_mcs, gal_mcs =
-                DeterministicVI.load_bvn_mixtures(ea, b, calculate_derivs=calculate_derivs)
+                DeterministicVI.load_bvn_mixtures(ea, b, calculate_derivs=calculate_derivs,
+                                                         calculate_hessian=calculate_hessian)
             sbs = DeterministicVI.SourceBrightness{NumType}[
-                DeterministicVI.SourceBrightness(ea.vp[s], calculate_derivs=calculate_derivs)
+                DeterministicVI.SourceBrightness(ea.vp[s], calculate_derivs=calculate_derivs,
+                                                           calculate_hessian=calculate_hessian)
                 for s in 1:ea.S]
 
             elbo_vars_loc = DeterministicVI.ElboIntermediateVariables(NumType, ea.S, ea.S)
@@ -140,7 +142,7 @@ function test_combine_pixel_sources()
 
         function wrapper_fun{NumType <: Number}(x::Vector{NumType})
             ea_local = unwrap_vp_vector(x, ea)
-            elbo_vars_local = e_g_wrapper_fun(ea_local, calculate_derivs=false)
+            elbo_vars_local = e_g_wrapper_fun(ea_local)
             test_var ? elbo_vars_local.var_G.v[1] : elbo_vars_local.E_G.v[1]
         end
 
