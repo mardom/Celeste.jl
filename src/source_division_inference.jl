@@ -46,6 +46,22 @@ function count_sources(rcfs::Vector{RunCamcolField}, box::BoundingBox, stagedir:
 end
 
 
+function clean_cache(cache::Dict)
+    lru_rcf = RunCamcolField(0, 0, 0)
+    lru_interval = 0.0
+    curr_time = time()
+    for (rcf, (imgs, cat, lru)) in cache
+        use_interval = curr_time - lru
+        if use_interval > lru_interval
+            lru_rcf = rcf
+            lru_interval = use_interval
+        end
+    end
+    ntputs(nodeid, threadid(), "discarding $(lru_rcf.run), $(lru_rcf.camcol), $(lru_rcf.field)")
+    delete!(cache, lru_rcf)
+end
+
+
 function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
                          rcfs::Vector{RunCamcolField},
                          cache::Dict, cache_lock::SpinLock,
@@ -70,7 +86,7 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
     tic()
     for srcf in surrounding_rcfs
         lock(cache_lock)
-        cached_imgs, cached_cat = get!(cache, srcf) do
+        cached_imgs, cached_cat, _ = get(cache, srcf) do
             ntputs(nodeid, tid, "loading $(srcf.run), $(srcf.camcol), $(srcf.field)")
             tic()
             field_images = SDSSIO.load_field_images(srcf, stagedir)
@@ -85,7 +101,11 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
                 append!(neighbors, fetch_catalog(srcf, stagedir))
                 times.load_cat = times.load_cat + toq()
             end
-            tiled_images, neighbors
+            tiled_images, neighbors, time()
+        end
+        push!(cache, srcf => (cached_imgs, cached_cat, time()))
+        if length(cache) > 50
+            clean_cache(cache)
         end
         unlock(cache_lock)
         append!(images, cached_imgs)
@@ -117,7 +137,7 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
     results_lock = SpinLock()
 
     cache = Dict{RunCamcolField,
-                 Tuple{Vector{TiledImage},Vector{CatalogEntry}}}()
+                 Tuple{Vector{TiledImage},Vector{CatalogEntry},Float64}}()
     cache_lock = SpinLock()
 
     # per-thread timing
@@ -170,12 +190,21 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
                 times.sched_ovh = times.sched_ovh + toq()
                 #ntputs(nodeid, tid, "running task $taskidx")
 
-                result = try
-                    optimize_source(taskidx, tasks, rcfs,
-                                    cache, cache_lock,
-                                    stagedir, times)
-                catch exc
-                    ntputs(nodeid, tid, "exception running task $taskidx ($exc)")
+                result = InferResult(0, "", 0.0, 0.0, [0.0], 1.0)
+                tries = 1
+                while tries <= 5
+                    result = try
+                        optimize_source(taskidx, tasks, rcfs,
+                                        cache, cache_lock,
+                                        stagedir, times)
+                    catch exc
+                        tries = tries + 1
+                        continue
+                    end
+                    break
+                end
+                if tries > 5
+                    ntputs(nodeid, tid, "exception running task $taskidx")
                     continue
                 end
 
