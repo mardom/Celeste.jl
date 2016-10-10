@@ -111,6 +111,9 @@ end
 
 function time_report_str(elapsedtime, bytes, gctime, allocs)
     s = @sprintf("%10.6f seconds", elapsedtime/1e9)
+    if bytes < 0
+        bytes = 0
+    end
     if bytes != 0 || allocs != 0
         bytes, mb = Base.prettyprint_getunits(bytes, length(Base._mem_units),
                             Int64(1024))

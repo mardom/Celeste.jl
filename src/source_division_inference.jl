@@ -83,7 +83,7 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
                         entry.pos[2] - 1e-8, entry.pos[2] + 1e-8)
     surrounding_rcfs = get_overlapping_fields(t_box, stagedir)
 
-    tic()
+    #tic()
     for srcf in surrounding_rcfs
         lock(cache_lock)
         cached_imgs, cached_cat, _ = get(cache, srcf) do
@@ -163,6 +163,9 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
     widx = 1
     wilock = SpinLock()
 
+    #gc_freq = 3
+    #gc_ctr = 1
+
     function process_tasks()
         tid = threadid()
         ttimes[tid] = InferTiming()
@@ -202,19 +205,20 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
 
                 result = InferResult(0, "", 0.0, 0.0, [0.0], 1.0)
                 tries = 1
-                while tries <= 5
+                while tries <= 3
                     result = try
                         optimize_source(taskidx, tasks, rcfs,
                                         cache, cache_lock,
                                         stagedir, times)
                     catch exc
+                        ntputs(nodeid, tid, "$exc running task $taskidx on try $tries")
                         tries = tries + 1
                         continue
                     end
                     break
                 end
-                if tries > 5
-                    ntputs(nodeid, tid, "exception running task $taskidx")
+                if tries > 3
+                    ntputs(nodeid, tid, "exception running task $taskidx on 3 tries, giving up")
                     continue
                 end
 
@@ -222,15 +226,29 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
                 lock(results_lock)
                 push!(results, result)
                 unlock(results_lock)
+
+                #if tid == 1
+                #    if gc_ctr == gc_freq
+                #        nputs(nodeid, "running GC")
+                #        gc_ctr = 1
+                #        gc_enable(true)
+                #        gc(false)
+                #        gc_enable(false)
+                #    end
+                #    gc_ctr = gc_ctr + 1
+                #end
             end
         end
     end
 
+    #gc_enable(false)
     tic()
     ccall(:jl_threading_run, Void, (Any,), Core.svec(process_tasks))
     #process_tasks()
     #ccall(:jl_threading_profile, Void, ())
     timing.opt_srcs = toq()
+    #gc_enable(true)
+    #gc()
 
     if nodeid == 1
         nputs(nodeid, "complete")
