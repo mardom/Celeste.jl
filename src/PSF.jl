@@ -497,8 +497,8 @@ function get_sigma_from_params{NumType <: Number}(psf_params::Vector{Vector{NumT
     bvn_vec = Array(BvnComponent{NumType}, K)
     for k = 1:K
         sigma_vec[k] = get_bvn_cov(psf_params[k][psf_ids.e_axis],
-                                                                        psf_params[k][psf_ids.e_angle],
-                                                                        psf_params[k][psf_ids.e_scale])
+                                   psf_params[k][psf_ids.e_angle],
+                                   psf_params[k][psf_ids.e_scale])
         sig_sf_vec[k] = GalaxySigmaDerivs(
             psf_params[k][psf_ids.e_angle],
             psf_params[k][psf_ids.e_axis],

@@ -68,24 +68,12 @@ function ElboArgs{NumType <: Number}(
     @assert length(tile_source_map) == N
     @assert size(patches, 1) == S
     @assert size(patches, 2) == N
-<<<<<<< HEAD
-    for tiled_image in images
-        for tile in tiled_image.tiles
-            for ep in tile.epsilon_mat
-                if ep <= 0.0
-                    throw(InvalidInputError(
-                        "You must set all values of epsilon_mat > 0 for all images included in ElboArgs"
-                ))
-                end
-            end
-=======
 
     for img in images, tile in img.tiles, ep in tile.epsilon_mat
         if ep <= 0.0
             throw(InvalidInputError(
                 "You must set all values of epsilon_mat > 0 for all images included in ElboArgs"
             ))
->>>>>>> master
         end
     end
 
