@@ -2,12 +2,12 @@
 If Infs/NaNs have crept into the ELBO evaluation (a symptom of poorly conditioned optimization),
 this helps catch them immediately.
 """
-function assert_all_finite(sf::SensitiveFloat)
+function assert_all_finite{NumType <: Number}(
+        sf::SensitiveFloat{NumType})
     @assert all(isfinite(sf.v)) "Value is Inf/NaNs"
     @assert all(isfinite(sf.d)) "Gradient contains Inf/NaNs"
     @assert all(isfinite(sf.h)) "Hessian contains Inf/NaNs"
 end
-
 
 """
 Convolve the current locations and galaxy shapes with the PSF.  If
@@ -779,23 +779,6 @@ end
 
 
 """
-<<<<<<< HEAD
-Get the active pixels (pixels for which the active sources are present).
-TODO: move this to pre-processing and use it instead of setting low-signal
-pixels to NaN.
-"""
-function get_active_pixels{NumType <: Number}(
-                    ea::ElboArgs{NumType})
-    return Model.get_active_pixels(ea.N,
-                                   ea.images,
-                                   ea.tile_source_map,
-                                   ea.active_sources)
-end
-
-
-"""
-=======
->>>>>>> master
 Return the expected log likelihood for all bands in a section
 of the sky.
 Returns: A sensitive float with the log,  likelihood.
@@ -804,14 +787,10 @@ function elbo_likelihood{NumType <: Number}(
                     ea::ElboArgs{NumType};
                     calculate_derivs=true,
                     calculate_hessian=true)
-<<<<<<< HEAD
     if !calculate_derivs
         calculate_hessian = false
     end
 
-    active_pixels = get_active_pixels(ea)
-=======
->>>>>>> master
     elbo_vars = ElboIntermediateVariables(NumType, ea.S,
                                 length(ea.active_sources),
                                 calculate_derivs=calculate_derivs,
@@ -841,15 +820,4 @@ function elbo{NumType <: Number}(
     elbo
 end
 
-<<<<<<< HEAD
 
-=======
-# If Infs/NaNs have crept into the ELBO evaluation (a symptom of poorly conditioned optimization),
-# this helps catch them immediately.
-function assert_all_finite{ParamType <: ParamSet, NumType <: Number}(
-        sf::SensitiveFloat{ParamType, NumType})
-    @assert all(isfinite(sf.v)) "Value is Inf/NaNs"
-    @assert all(isfinite(sf.d)) "Gradient contains Inf/NaNs"
-    @assert all(isfinite(sf.h)) "Hessian contains Inf/NaNs"
-end
->>>>>>> master
