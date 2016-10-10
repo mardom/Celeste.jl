@@ -624,7 +624,7 @@ function DataTransform(bounds::Vector{ParamBounds};
         sf_free = SensitiveFloat{NumType}(length(UnconstrainedParams), active_S,
                                           sf.has_deriv, sf.has_hess)
         sf_d_vec = sf.d[:]
-        sf_free.v[1] = sf.v[1]
+        sf_free.v = sf.v
         sf_free.d =
         reshape(transform_derivatives.dparam_dfree' * sf_d_vec,
                         length(UnconstrainedParams), active_S)

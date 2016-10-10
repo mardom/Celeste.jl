@@ -13,8 +13,8 @@ function get_bvn_cov{NumType <: Number}(
     ab::NumType, angle::NumType, scale::NumType)
 
    if NumType <: AbstractFloat
-       @assert 0 < scale
-       @assert 0 < ab <= 1.
+       @assert 0. < scale
+       @assert 0. < ab <= 1.
    end
 
    cp = cos(angle)

@@ -22,8 +22,7 @@ Attributes:
       with respect to all the sources.
 """
 type SensitiveFloat{NumType}
-    # Actually a single value, but an Array to avoid memory allocation
-    v::Vector{NumType}
+    v::NumType
 
     # local_P x local_S matrix of gradients
     d::Matrix{NumType}
@@ -40,7 +39,7 @@ type SensitiveFloat{NumType}
 
     SensitiveFloat(local_P::Int64, local_S::Int64, has_deriv::Bool, has_hess::Bool) = begin
         @assert has_deriv || !has_hess
-        new(zeros(NumType, 1),
+        new(zero(NumType),
             has_deriv ? zeros(NumType, local_P, local_S)
                       : Array(NumType, 0, 0),
             has_hess ? zeros(NumType, local_P * local_S, local_P * local_S)
@@ -77,7 +76,7 @@ end
 
 
 function clear!{NumType <: Number}(sf::SensitiveFloat{NumType})
-    fill!(sf.v, zero(NumType))
+    sf.v = 0.0
     if sf.has_deriv
         fill!(sf.d, zero(NumType))
     end
@@ -150,7 +149,7 @@ function combine_sfs!{T1 <: Number, T2 <: Number, T3 <: Number}(
         LinAlg.BLAS.axpy!(g_d[2], sf2.d, sf_result.d)
     end
 
-    sf_result.v[1] = v
+    sf_result.v = v
 end
 
 
@@ -163,8 +162,8 @@ Updates sf1 in place with sf1 * sf2.
 function multiply_sfs!{NumType <: Number}(
             sf1::SensitiveFloat{NumType},
             sf2::SensitiveFloat{NumType})
-    v = sf1.v[1] * sf2.v[1]
-    g_d = NumType[sf2.v[1], sf1.v[1]]
+    v = sf1.v * sf2.v
+    g_d = NumType[sf2.v, sf1.v]
 
     combine_sfs!(sf1, sf2, sf1, v, g_d, multiply_sfs_hess)
 end
@@ -177,7 +176,7 @@ function add_scaled_sfs!{NumType <: Number}(
                     sf1::SensitiveFloat{NumType},
                     sf2::SensitiveFloat{NumType},
                     scale::AbstractFloat)
-    sf1.v[1] += scale * sf2.v[1]
+    sf1.v += scale * sf2.v
 
     @assert sf1.has_deriv == sf2.has_deriv
     @assert sf1.has_hess == sf2.has_hess
@@ -208,7 +207,7 @@ function add_sources_sf!{NumType <: Number}(
                     sf_all::SensitiveFloat{NumType},
                     sf_s::SensitiveFloat{NumType},
                     s::Int)
-    sf_all.v[1] = sf_all.v[1] + sf_s.v[1]
+    sf_all.v = sf_all.v + sf_s.v
 
     @assert size(sf_all.d, 1) == size(sf_s.d, 1)
 

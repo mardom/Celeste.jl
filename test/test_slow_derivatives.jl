@@ -23,7 +23,7 @@ function test_elbo()
     function wrap_elbo{NumType <: Number}(vp_vec::Vector{NumType})
         ea_local = unwrap_vp_vector(vp_vec, ea)
         elbo = DeterministicVI.elbo(ea_local, calculate_derivs=false)
-        elbo.v[1]
+        elbo.v
     end
 
     ea.active_sources = [1]
@@ -86,7 +86,7 @@ function test_real_image()
         ea_local = forward_diff_model_params(NumType, ea)
         ea_local.vp[1][:] = vs1
         local_elbo = DeterministicVI.elbo(ea_local, calculate_derivs=false)
-        local_elbo.v[1]
+        local_elbo.v
     end
 
     test_with_autodiff(wrap_elbo, ea.vp[1], elbo)
@@ -113,7 +113,7 @@ function test_transform_sensitive_float()
 		ea_local = forward_diff_model_params(NumType, ea)
 		transform.to_vp!(vp_free, ea_local.vp)
 		elbo = DeterministicVI.elbo(ea_local, calculate_derivs=false, calculate_hessian=false)
-		elbo.v[1]
+		elbo.v
 	end
 
 	transform = Transform.get_mp_transform(ea.vp, ea.active_sources, loc_width=1.0)

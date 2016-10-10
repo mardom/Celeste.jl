@@ -66,7 +66,7 @@ function test_single_source_optimization()
     s = 2
     ea.active_sources = Int[s]
     omitted_ids = Int[]
-    DeterministicVI.elbo_likelihood(ea).v[1]
+    DeterministicVI.elbo_likelihood(ea).v
     DeterministicVI.maximize_f(DeterministicVI.elbo_likelihood, ea; loc_width=1.0)
 
     # Test that it only optimized source s
@@ -130,8 +130,8 @@ function test_two_body_optimization_newton()
     sum((bfgs_image .- original_image) .^ 2)
 
     # newton beats bfgs on the elbo, though not on the likelihood.
-    elbo_function(tiled_blob, ea_bfgs).v[1]
-    elbo_function(tiled_blob, ea_newton).v[1]
+    elbo_function(tiled_blob, ea_bfgs).v
+    elbo_function(tiled_blob, ea_newton).v
 end
 
 
@@ -176,7 +176,7 @@ function test_quadratic_optimization()
 
     function quadratic_function{NumType <: Number}(ea::ElboArgs{NumType})
         val = SensitiveFloat{NumType}(length(CanonicalParams), 1, true, true)
-        val.v[1] = -sum((ea.vp[1] - centers) .^ 2)
+        val.v = -sum((ea.vp[1] - centers) .^ 2)
         val.d[:] = -2.0 * (ea.vp[1] - centers)
         val.h[:, :] = diagm(fill(-2.0, length(CanonicalParams)))
         val
@@ -199,7 +199,7 @@ function test_quadratic_optimization()
                             xtol_rel=1e-16, ftol_abs=1e-16)
 
     @test_approx_eq_eps ea.vp[1] centers 1e-6
-    @test_approx_eq_eps quadratic_function(ea).v[1] 0.0 1e-15
+    @test_approx_eq_eps quadratic_function(ea).v 0.0 1e-15
 end
 
 

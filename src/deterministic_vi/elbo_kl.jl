@@ -174,7 +174,7 @@ function get_a_term_sensitive_float{NumType <: Number}(tgt::SensitiveFloat,
                                                        a::NumType,
                                                        i::Integer)
     a_term = SensitiveFloat(tgt)
-    a_term.v[1] = a
+    a_term.v = a
     if tgt.has_deriv
         a_term.d[ids.a[i, 1], 1] = 1
     end
@@ -198,7 +198,7 @@ function subtract_kl_c!{NumType <: Number}(
         var_ids = ids.c2[:, i]
         kl, grad_mean, grad_var, hess_mean, hess_var =
             pp_kl_cid(vs[mean_ids], vs[var_ids])
-        kl_term.v[1] = kl
+        kl_term.v = kl
 
         if kl_source.has_deriv
             kl_term.d[mean_ids, 1] = grad_mean
@@ -213,7 +213,7 @@ function subtract_kl_c!{NumType <: Number}(
         a_term = get_a_term_sensitive_float(kl_source, vs[ids.a[i, 1]], i)
 
         k_term = SensitiveFloat(kl_source)
-        k_term.v[1] = vs[ids.k[d, i]]
+        k_term.v = vs[ids.k[d, i]]
         if k_term.has_deriv
             k_term.d[ids.k[d, i], 1] = 1
         end
@@ -243,7 +243,7 @@ function subtract_kl_k!{NumType <: Number}(
         k_ind = ids.k[:, i]
         pp_kl_ki = gen_categorical_kl(prior.k[:, i])
         kl, grad, hess = pp_kl_ki(vs[k_ind])
-        kl_term.v[1] = kl
+        kl_term.v = kl
         if kl_source.has_deriv
             kl_term.d[k_ind, 1] = grad
         end
@@ -270,7 +270,7 @@ function subtract_kl_r!{NumType <: Number}(
         pp_kl_r = gen_normal_kl(prior.r_mean[i], prior.r_var[i])
         kl, grad, hess = pp_kl_r(vs[ids.r1[i]], vs[ids.r2[i]])
         r_ind = Integer[ ids.r1[i], ids.r2[i] ]
-        kl_term.v[1] = kl
+        kl_term.v = kl
         if kl_term.has_deriv
             kl_term.d[r_ind, 1] = grad
         end
@@ -293,7 +293,7 @@ function subtract_kl_a!{NumType <: Number}(
     pp_kl_a = gen_categorical_kl(prior.a)
 
     kl, grad, hess = pp_kl_a(vs[ids.a[:, 1]])
-    kl_source.v[1] -= kl
+    kl_source.v -= kl
 
     if kl_source.has_deriv
         kl_source.d[ids.a[:, 1], 1] -= grad

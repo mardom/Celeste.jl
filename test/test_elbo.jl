@@ -84,12 +84,12 @@ function test_derivative_flags()
     elbo = DeterministicVI.elbo(ea)
 
     elbo_noderiv = DeterministicVI.elbo(ea; calculate_derivs=false)
-    @test_approx_eq elbo.v[1] elbo_noderiv.v[1]
+    @test_approx_eq elbo.v elbo_noderiv.v
     @test length(elbo_noderiv.d) == 0
     @test length(elbo_noderiv.h) == 0
 
     elbo_nohess = DeterministicVI.elbo(ea; calculate_hessian=false)
-    @test_approx_eq elbo.v[1] elbo_nohess.v
+    @test_approx_eq elbo.v elbo_nohess.v
     @test_approx_eq elbo.d elbo_nohess.d
     @test length(elbo_noderiv.h) == 0
 end
@@ -113,8 +113,8 @@ function test_active_sources()
     ea.active_sources = [2]
     elbo_lik_2 = DeterministicVI.elbo_likelihood(ea)
 
-    @test_approx_eq elbo_lik_12.v[1] elbo_lik_1.v
-    @test_approx_eq elbo_lik_12.v[1] elbo_lik_2.v
+    @test_approx_eq elbo_lik_12.v elbo_lik_1.v
+    @test_approx_eq elbo_lik_12.v elbo_lik_2.v
 
     @test_approx_eq elbo_lik_12.d[:, 1] elbo_lik_1.d[:, 1]
     @test_approx_eq elbo_lik_12.d[:, 2] elbo_lik_2.d[:, 1]
@@ -146,7 +146,7 @@ function test_that_variance_is_low()
     DeterministicVI.get_expected_pixel_brightness!(
       elbo_vars, h, w, sbs, star_mcs, gal_mcs, tile, ea, tile_source_map);
 
-    @test 0 < elbo_vars.var_G.v[1] < 1e-2 * elbo_vars.E_G.v[1]^2
+    @test 0 < elbo_vars.var_G.v < 1e-2 * elbo_vars.E_G.v^2
 end
 
 
@@ -158,7 +158,7 @@ function test_that_star_truth_is_most_likely()
         ea_a = deepcopy(ea)
         ea_a.vp[1][ids.a[:, 1]] = [ 1.0 - bad_a, bad_a ]
         bad_a_lik = DeterministicVI.elbo_likelihood(ea_a)
-        @test best.v[1] > bad_a_lik.v[1]
+        @test best.v > bad_a_lik.v
     end
 
     for h2 in -2:2
@@ -167,7 +167,7 @@ function test_that_star_truth_is_most_likely()
                 ea_mu = deepcopy(ea)
                 ea_mu.vp[1][ids.u] += [h2 * .5, w2 * .5]
                 bad_mu = DeterministicVI.elbo_likelihood(ea_mu)
-                @test best.v[1] > bad_mu.v[1]
+                @test best.v > bad_mu.v
             end
         end
     end
@@ -176,7 +176,7 @@ function test_that_star_truth_is_most_likely()
         ea_r1 = deepcopy(ea)
         ea_r1.vp[1][ids.r1] += log(delta)
         bad_r1 = DeterministicVI.elbo_likelihood(ea_r1)
-        @test best.v[1] > bad_r1.v[1]
+        @test best.v > bad_r1.v
     end
 
     for b in 1:4
@@ -184,7 +184,7 @@ function test_that_star_truth_is_most_likely()
             ea_c1 = deepcopy(ea)
             ea_c1.vp[1][ids.c1[b, 1]] += delta
             bad_c1 = DeterministicVI.elbo_likelihood(ea_c1)
-            @test best.v[1] > bad_c1.v[1]
+            @test best.v > bad_c1.v
         end
     end
 
@@ -201,7 +201,7 @@ function test_that_galaxy_truth_is_most_likely()
         ea_a.vp[1][ids.a[:, 1]] = [ 1.0 - bad_a, bad_a ];
         bad_a =
           DeterministicVI.elbo_likelihood(ea_a; calculate_derivs=false);
-        @test best.v[1] > bad_a.v[1];
+        @test best.v > bad_a.v;
     end
 
     for h2 in -2:2
@@ -211,7 +211,7 @@ function test_that_galaxy_truth_is_most_likely()
                 ea_mu.vp[1][ids.u] += [h2 * .5, w2 * .5]
                 bad_mu = DeterministicVI.elbo_likelihood(
                   ea_mu; calculate_derivs=false)
-                @test best.v[1] > bad_mu.v[1]
+                @test best.v > bad_mu.v
             end
         end
     end
@@ -221,7 +221,7 @@ function test_that_galaxy_truth_is_most_likely()
         ea_r1.vp[1][ids.r1] += 2 * log(bad_scale)
         bad_r1 = DeterministicVI.elbo_likelihood(
           ea_r1; calculate_derivs=false)
-        @test best.v[1] > bad_r1.v[1]
+        @test best.v > bad_r1.v
     end
 
     for n in [:e_axis, :e_angle, :e_scale]
@@ -230,7 +230,7 @@ function test_that_galaxy_truth_is_most_likely()
             ea_bad.vp[1][getfield(ids, n)] *= bad_scale
             bad_elbo = DeterministicVI.elbo_likelihood(
               ea_bad; calculate_derivs=false)
-            @test best.v[1] > bad_elbo.v[1]
+            @test best.v > bad_elbo.v
         end
     end
 
@@ -240,7 +240,7 @@ function test_that_galaxy_truth_is_most_likely()
             ea_c1.vp[1][ids.c1[b, 2]] += delta
             bad_c1 = DeterministicVI.elbo_likelihood(
               ea_c1; calculate_derivs=false)
-            @test best.v[1] > bad_c1.v[1]
+            @test best.v > bad_c1.v
         end
     end
 end
@@ -281,7 +281,7 @@ function test_coadd_cat_init_is_most_likely()  # on a real stamp
         ea_r1.vp[s][ids.r1] += 2 * log(bad_scale)
         bad_r1 = DeterministicVI.elbo_likelihood(
           ea_r1; calculate_derivs=false)
-        @test best.v[1] > bad_r1.v[1]
+        @test best.v > bad_r1.v
     end
 
     for n in [:e_axis, :e_angle, :e_scale]
@@ -290,7 +290,7 @@ function test_coadd_cat_init_is_most_likely()  # on a real stamp
             ea_bad.vp[s][getfield(ids, n)] *= bad_scale
             bad_elbo = DeterministicVI.elbo_likelihood(
               ea_bad; calculate_derivs=false)
-            @test best.v[1] > bad_elbo.v[1]
+            @test best.v > bad_elbo.v
         end
     end
 
@@ -300,7 +300,7 @@ function test_coadd_cat_init_is_most_likely()  # on a real stamp
 
         bad_a = DeterministicVI.elbo_likelihood(
           ea_a; calculate_derivs=false)
-        @test best.v[1] > bad_a.v[1]
+        @test best.v > bad_a.v
     end
 
     for h2 in -2:2
@@ -310,7 +310,7 @@ function test_coadd_cat_init_is_most_likely()  # on a real stamp
                 ea_mu.vp[s][ids.u] += [0.5h2, 0.5w2]
                 bad_mu = DeterministicVI.elbo_likelihood(
                   ea_mu; calculate_derivs=false)
-                @test best.v[1] > bad_mu.v[1]
+                @test best.v > bad_mu.v
             end
         end
     end
@@ -321,8 +321,8 @@ function test_coadd_cat_init_is_most_likely()  # on a real stamp
             ea_c1.vp[s][ids.c1[b, :]] += delta
             bad_c1 = DeterministicVI.elbo_likelihood(
               ea_c1; calculate_derivs=false)
-            info("$(best.v[1])  >  $(bad_c1.v[1])")
-            @test best.v[1] > bad_c1.v[1]
+            info("$(best.v)  >  $(bad_c1.v)")
+            @test best.v > bad_c1.v
         end
     end
 end
@@ -363,8 +363,8 @@ function test_tiny_image_tiling()
     DeterministicVI.elbo_likelihood(
       ea2, calculate_derivs=false, calculate_hessian=false);
 
-  @test_approx_eq elbo_lik_tiles.v[1] elbo_lik_tiles2.v[1]
-  @test_approx_eq_eps elbo_lik.v[1] elbo_lik_tiles.v[1] 100.
+  @test_approx_eq elbo_lik_tiles.v elbo_lik_tiles2.v
+  @test_approx_eq_eps elbo_lik.v elbo_lik_tiles.v 100.
 
 end
 
@@ -378,7 +378,7 @@ function test_num_allowed_sd()
     ea.num_allowed_sd = 3
     elbo_4sd = DeterministicVI.elbo(ea)
 
-    @test_approx_eq elbo_inf.v[1] elbo_4sd.v[1]
+    @test_approx_eq elbo_inf.v elbo_4sd.v
     @test_approx_eq elbo_inf.d elbo_4sd.d
     @test_approx_eq elbo_inf.h elbo_4sd.h
 end
