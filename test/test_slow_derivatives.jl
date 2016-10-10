@@ -84,49 +84,49 @@ end
 
 
 function test_transform_sensitive_float()
-	blob, ea, body = gen_two_body_dataset();
+	blob, ea, body = gen_two_body_dataset()
 
 	# Only keep a few pixels to make the autodiff results faster.
   keep_pixels = 10:11
 	for b = 1:ea.N
 	  pixels1 = ea.images[b].tiles[1,1].pixels
       h_width, w_width = size(pixels1)
-	  pixels1[setdiff(1:h_width, keep_pixels), :] = NaN;
-	  pixels1[:, setdiff(1:w_width, keep_pixels)] = NaN;
+	  pixels1[setdiff(1:h_width, keep_pixels), :] = NaN
+	  pixels1[:, setdiff(1:w_width, keep_pixels)] = NaN
 	end
 
 
 	function wrap_elbo{NumType <: Number}(vp_free_vec::Vector{NumType})
 		vp_free_array = reshape(vp_free_vec, length(UnconstrainedParams), length(ea.active_sources))
 		vp_free = Vector{NumType}[ zeros(NumType, length(UnconstrainedParams)) for
-		                           sa in ea.active_sources ];
+		                           sa in ea.active_sources ]
 		Transform.array_to_free_vp!(vp_free_array, vp_free, Int[])
-		ea_local = forward_diff_model_params(NumType, ea);
+		ea_local = forward_diff_model_params(NumType, ea)
 		transform.to_vp!(vp_free, ea_local.vp)
 		elbo = DeterministicVI.elbo(ea_local, calculate_derivs=false)
 		elbo.v[1]
 	end
 
-	transform = Transform.get_mp_transform(ea.vp, ea.active_sources, loc_width=1.0);
-	elbo = DeterministicVI.elbo(ea);
-	elbo_trans = transform.transform_sensitive_float(elbo, ea.vp, ea.active_sources);
+	transform = Transform.get_mp_transform(ea.vp, ea.active_sources, loc_width=1.0)
+	elbo = DeterministicVI.elbo(ea)
+	elbo_trans = transform.transform_sensitive_float(elbo, ea.vp, ea.active_sources)
 
-	free_vp_vec = reduce(vcat, transform.from_vp(ea.vp));
-	ad_grad = ForwardDiff.gradient(wrap_elbo, free_vp_vec);
-	ad_hess = ForwardDiff.hessian(wrap_elbo, free_vp_vec);
+	free_vp_vec = reduce(vcat, transform.from_vp(ea.vp))
+	ad_grad = ForwardDiff.gradient(wrap_elbo, free_vp_vec)
+	ad_hess = ForwardDiff.hessian(wrap_elbo, free_vp_vec)
 
 	@test_approx_eq ad_grad reduce(vcat, elbo_trans.d)
 	@test_approx_eq ad_hess elbo_trans.h
 
   # Test with a subset of sources.
 	ea.active_sources = [2]
-	transform = Transform.get_mp_transform(ea.vp, ea.active_sources, loc_width=1.0);
-	elbo = DeterministicVI.elbo(ea);
-	elbo_trans = transform.transform_sensitive_float(elbo, ea.vp, ea.active_sources);
+	transform = Transform.get_mp_transform(ea.vp, ea.active_sources, loc_width=1.0)
+	elbo = DeterministicVI.elbo(ea)
+	elbo_trans = transform.transform_sensitive_float(elbo, ea.vp, ea.active_sources)
 
-	free_vp_vec = reduce(vcat, transform.from_vp(ea.vp));
-	ad_grad = ForwardDiff.gradient(wrap_elbo, free_vp_vec);
-	ad_hess = ForwardDiff.hessian(wrap_elbo, free_vp_vec);
+	free_vp_vec = reduce(vcat, transform.from_vp(ea.vp))
+	ad_grad = ForwardDiff.gradient(wrap_elbo, free_vp_vec)
+	ad_hess = ForwardDiff.hessian(wrap_elbo, free_vp_vec)
 
 	@test_approx_eq ad_grad reduce(vcat, elbo_trans.d)
 	@test_approx_eq ad_hess elbo_trans.h
