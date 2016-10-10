@@ -84,8 +84,8 @@ function BoundingBox(ramin::String, ramax::String, decmin::String, decmax::Strin
 end
 
 
-@inline nputs(nid, s) = ccall(:puts, Cint, (Ptr{Int8},), string("[$nid] ", s))
-@inline phalse(b) = b[] = false
+@inline nputs(nid, s...) = ccall(:puts, Cint, (Cstring,), string("[$nid] ", s...))
+@inline ntputs(nid, tid, s...) = ccall(:puts, Cint, (Cstring,), string("[$nid]<$tid> ", s...))
 
 
 include("source_division_inference.jl")
@@ -109,12 +109,7 @@ function divide_skyarea(box, nra, ndec, i)
 end
 
 
-@inline nputs(nid, s...) = ccall(:puts, Cint, (Cstring,), string("[$nid] ", s...))
-@inline ntputs(nid, tid, s...) = ccall(:puts, Cint, (Cstring,), string("[$nid]<$tid> ", s...))
-@inline phalse(b) = b[] = false
-
-
-function time_puts(elapsedtime, bytes, gctime, allocs)
+function time_report_str(elapsedtime, bytes, gctime, allocs)
     s = @sprintf("%10.6f seconds", elapsedtime/1e9)
     if bytes != 0 || allocs != 0
         bytes, mb = Base.prettyprint_getunits(bytes, length(Base._mem_units),
@@ -141,7 +136,7 @@ function time_puts(elapsedtime, bytes, gctime, allocs)
     elseif gctime > 0
         s = string(s, @sprintf(", %.2f%% gc time", 100*gctime/elapsedtime))
     end
-    nputs(nodeid, s)
+    return s
 end
 
 
@@ -281,6 +276,9 @@ function load_images(rcfs, stagedir)
 
     images
 end
+
+
+@inline phalse(b) = b[] = false
 
 
 """
@@ -500,9 +498,6 @@ called from main entry point.
 """
 function infer_box(box::BoundingBox, stagedir::String, outdir::String)
     # Base.@time hack for distributed environment
-    gc_stats = ()
-    gc_diff_stats = ()
-    elapsed_time = 0.0
     gc_stats = Base.gc_num()
     elapsed_time = time_ns()
 
@@ -527,8 +522,9 @@ function infer_box(box::BoundingBox, stagedir::String, outdir::String)
     # Base.@time hack for distributed environment
     elapsed_time = time_ns() - elapsed_time
     gc_diff_stats = Base.GC_Diff(Base.gc_num(), gc_stats)
-    time_puts(elapsed_time, gc_diff_stats.allocd, gc_diff_stats.total_time,
-              Base.gc_alloc_count(gc_diff_stats))
+    nputs(nodeid, time_report_str(elapsed_time, gc_diff_stats.allocd,
+                                  gc_diff_stats.total_time,
+                                  Base.gc_alloc_count(gc_diff_stats)))
 
     times.num_srcs = max(1, times.num_srcs)
     nputs(nodeid, "timing: load_img=$(times.load_img)")

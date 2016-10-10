@@ -111,15 +111,25 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
         append!(images, cached_imgs)
         append!(catalog, cached_cat)
     end
-    ntputs(nodeid, tid, "fetched data to infer $(entry.objid) in $(toq()) secs")
+    #ntputs(nodeid, tid, "fetched data to infer $(entry.objid) in $(toq()) secs")
 
     neighbor_indexes = Infer.find_neighbors([cat_idx,], catalog, images)[1]
     neighbors = catalog[neighbor_indexes]
 
+    gc_stats = Base.gc_num()
+    elapsed_time = time_ns()
+
     t0 = time()
     vs_opt = Infer.infer_source(images, neighbors, entry)
     runtime = time() - t0
-    ntputs(nodeid, tid, "ran inference for $(entry.objid) in $runtime secs")
+
+    elapsed_time = time_ns() - elapsed_time
+    gc_diff_stats = Base.GC_Diff(Base.gc_num(), gc_stats)
+    ntputs(nodeid, tid, "$(entry.objid): ",
+           time_report_str(elapsed_time, gc_diff_stats.allocd,
+                           gc_diff_stats.total_time,
+                           Base.gc_alloc_count(gc_diff_stats)))
+    #ntputs(nodeid, tid, "$(entry.objid): $(runtime) secs")
 
     InferResult(entry.thing_id, entry.objid, entry.pos[1], entry.pos[2],
                 vs_opt, runtime)
@@ -148,7 +158,7 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
     numwi, (startwi, endwi) = initwork(dt)
     rundt = runtree(dt)
 
-    nputs(nodeid, "initially $numwi work items ($startwi-$endwi)")
+    nputs(nodeid, "dtree: initial work: $numwi ($startwi-$endwi)")
 
     widx = 1
     wilock = SpinLock()
@@ -159,7 +169,7 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
         times = ttimes[tid]
 
         if rundt && tid == 1
-            ntputs(nodeid, tid, "running tree")
+            ntputs(nodeid, tid, "dtree: running tree")
             while runtree(dt)
                 cpu_pause()
             end
@@ -168,15 +178,15 @@ function optimize_sources(tasks::Vector{Tuple{Int64,Int64}},
                 tic()
                 lock(wilock)
                 if endwi == 0
-                    ntputs(nodeid, tid, "out of work")
+                    ntputs(nodeid, tid, "dtree: out of work")
                     unlock(wilock)
                     times.sched_ovh = times.sched_ovh + toq()
                     break
                 end
                 if widx > numwi
-                    ntputs(nodeid, tid, "consumed last work item; requesting more")
+                    ntputs(nodeid, tid, "dtree: getting work")
                     numwi, (startwi, endwi) = getwork(dt)
-                    ntputs(nodeid, tid, "got $numwi work items ($startwi-$endwi)")
+                    ntputs(nodeid, tid, "dtree: $numwi work items ($startwi-$endwi)")
                     if endwi > 0
                         widx = 1
                     end
