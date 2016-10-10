@@ -72,7 +72,7 @@ function ElboArgs{NumType <: Number}(
                 if ep <= 0.0
                     throw(InvalidInputError(
                         "You must set all values of epsilon_mat > 0 for all images included in ElboArgs"
-                ))
+                    ))
                 end
             end
         end
