@@ -138,7 +138,6 @@ immutable BvnComponent{NumType <: Number}
         # dsiginv_dsig[a, b] is the derivative of sig^{-1}[a] / d sig[b]
         dsiginv_dsig = Array(ThisNumType, 3, 3)
 
-
         dsiginv_dsig[1, 1] = -precision[1, 1] ^ 2
         dsiginv_dsig[1, 2] = -2 * precision[1, 1] * precision[1, 2]
         dsiginv_dsig[1, 3] = -precision[1, 2] ^ 2
@@ -154,7 +153,7 @@ immutable BvnComponent{NumType <: Number}
         new{ThisNumType}(the_mean, precision, c * weight,
                          dsiginv_dsig, major_sd)
       else
-        new{ThisNumType}(the_mean, the_cov^-1, c * weight,
+        new{ThisNumType}(the_mean, precision, c * weight,
                          zeros(ThisNumType, 0, 0), major_sd)
       end
     end
