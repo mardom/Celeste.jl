@@ -104,7 +104,7 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
             tiled_images, neighbors, time()
         end
         push!(cache, srcf => (cached_imgs, cached_cat, time()))
-        if length(cache) > 50
+        if length(cache) > 20
             clean_cache(cache)
         end
         unlock(cache_lock)
