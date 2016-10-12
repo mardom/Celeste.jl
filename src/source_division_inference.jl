@@ -116,20 +116,20 @@ function optimize_source(taskidx::Int64, tasks::Vector{Tuple{Int64,Int64}},
     neighbor_indexes = Infer.find_neighbors([cat_idx,], catalog, images)[1]
     neighbors = catalog[neighbor_indexes]
 
-    gc_stats = Base.gc_num()
-    elapsed_time = time_ns()
+    #gc_stats = Base.gc_num()
+    #elapsed_time = time_ns()
 
     t0 = time()
     vs_opt = Infer.infer_source(images, neighbors, entry)
     runtime = time() - t0
 
-    elapsed_time = time_ns() - elapsed_time
-    gc_diff_stats = Base.GC_Diff(Base.gc_num(), gc_stats)
-    ntputs(nodeid, tid, "$(entry.objid): ",
-           time_report_str(elapsed_time, gc_diff_stats.allocd,
-                           gc_diff_stats.total_time,
-                           Base.gc_alloc_count(gc_diff_stats)))
-    #ntputs(nodeid, tid, "$(entry.objid): $(runtime) secs")
+    #elapsed_time = time_ns() - elapsed_time
+    #gc_diff_stats = Base.GC_Diff(Base.gc_num(), gc_stats)
+    #ntputs(nodeid, tid, "$(entry.objid): ",
+    #       time_report_str(elapsed_time, gc_diff_stats.allocd,
+    #                       gc_diff_stats.total_time,
+    #                       Base.gc_alloc_count(gc_diff_stats)))
+    ntputs(nodeid, tid, "$(entry.objid): $(runtime) secs")
 
     InferResult(entry.thing_id, entry.objid, entry.pos[1], entry.pos[2],
                 vs_opt, runtime)
